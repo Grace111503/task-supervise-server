@@ -1,0 +1,15 @@
+# Lefthook configuration
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,vue,css,scss,md,mdx}"
+      run: npx ultracite fix {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit {1}

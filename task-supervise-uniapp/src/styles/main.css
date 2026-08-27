@@ -1,0 +1,16 @@
+page {
+  box-sizing: border-box;
+}
+
+/* 浅色模式 - 参考 Arco Design */
+.app-box {
+  min-height: 100vh;
+  color: #1d2129; /* Arco 主要文字色 */
+  background: #f7f8fa; /* Arco 页面背景色 */
+}
+
+/* 深色模式 - 参考 Arco Design */
+.dark {
+  color: #e5e6eb; /* Arco 深色主要文字 */
+  background: #17171a; /* Arco 深色页面背景 */
+}

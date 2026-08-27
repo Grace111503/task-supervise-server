@@ -1,0 +1,17 @@
+shamefullyHoist: true
+strictPeerDependencies: false
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  '@uni-helper/unocss-preset-uni': true
+  core-js: true
+  core-js-pure: true
+  esbuild: true
+  lefthook: true
+  less: true
+  protobufjs: true
+  vue-demi: true
+
+minimumReleaseAgeExclude:
+  - sass@1.101.6 || 1.101.7

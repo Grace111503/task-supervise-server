@@ -1,0 +1,123 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/biome/core", "ultracite/biome/vue"],
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "!!dist/**/*",
+      "!!node_modules/**/*",
+      "!!.nuxt/**/*",
+      "!!.output/**/*",
+      "!!uni_modules/**/*",
+      "!!unpackage/**/*",
+      "!!pnpm-lock.yaml",
+      "!!src/@types/*"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf"
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "style": {
+        "noNonNullAssertion": "off",
+        "useBlockStatements": "off",
+        "noParameterAssign": "off",
+        "useFilenamingConvention": "off",
+        "noNamespace": "off",
+        "noEnum": "off",
+        "useAtIndex": "off",
+        "useConsistentArrayType": "off",
+        "useShorthandAssign": "off",
+        "useConsistentTypeDefinitions": "off",
+        "noIncrementDecrement": "off",
+        "useVueHyphenatedAttributes": "off",
+        "useVueMultiWordComponentNames": "off",
+        // uni-app / Vue SFC: 以下风格规则噪音较大，关闭
+        "useDestructuring": "off",
+        "noMultiAssign": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noConsole": "off",
+        "noAsyncPromiseExecutor": "off",
+        "useGuardForIn": "off",
+        "noAssignInExpressions": "off",
+        "noEmptyBlockStatements": "off",
+        "noEvolvingTypes": "off",
+        "useAwait": "off",
+        "noBitwiseOperators": "off",
+        "useIterableCallbackReturn": "off",
+        "noEmptySource": "off",
+        "noUnusedExpressions": "off",
+        "noShadow": "off",
+        // ESM/Vue SFC 恒为严格模式，且 `== null` 为惯用写法；类型断言后可选链会误报
+        "useStrictMode": "off",
+        "noEqualsToNull": "off",
+        "noUnnecessaryConditions": "off"
+      },
+      "complexity": {
+        "noForEach": "off",
+        "useDateNow": "off",
+        "noBannedTypes": "off",
+        "noExcessiveCognitiveComplexity": "off",
+        "noRedundantDefaultExport": "off"
+      },
+      // uni-app 组件编译为各端原生组件（非 DOM），DOM 无障碍规则不适用
+      "a11y": {
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off",
+        "noNoninteractiveElementInteractions": "off",
+        "noSvgWithoutTitle": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "off",
+        "noUnusedImports": "off",
+        "noUndeclaredVariables": "off",
+        "noUnusedFunctionParameters": "off",
+        "noUnknownTypeSelector": "off",
+        "useParseIntRadix": "off"
+      },
+      "performance": {
+        "noDelete": "off",
+        "noNamespaceImport": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded"
+    },
+    "globals": ["uni", "UniApp", "getCurrentPages", "getApp"]
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.vue"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useVueHyphenatedAttributes": "off",
+            "useVueMultiWordComponentNames": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/pages.json", "**/manifest.json"],
+      "json": {
+        "parser": {
+          "allowComments": true
+        }
+      }
+    }
+  ]
+}

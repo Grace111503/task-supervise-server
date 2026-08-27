@@ -1,0 +1,97 @@
+import { defineManifestConfig } from '@uni-helper/vite-plugin-uni-manifest'
+import {
+  APP_DESCRIPTION,
+  APP_ID,
+  APP_ID_WECHAT,
+  APP_NAME,
+  APP_VERSION,
+} from './src/config/app'
+
+export default defineManifestConfig({
+  /* 5+App特有相关 */
+  'app-plus': {
+    compilerVersion: 3,
+    darkmode: true,
+    /* 应用发布信息 */
+    distribute: {
+      /* android打包配置 */
+      android: {
+        permissions: [
+          '<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE"/>',
+          '<uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS"/>',
+          '<uses-permission android:name="android.permission.VIBRATE"/>',
+          '<uses-permission android:name="android.permission.READ_LOGS"/>',
+          '<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>',
+          '<uses-feature android:name="android.hardware.camera.autofocus"/>',
+          '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>',
+          '<uses-permission android:name="android.permission.CAMERA"/>',
+          '<uses-permission android:name="android.permission.GET_ACCOUNTS"/>',
+          '<uses-permission android:name="android.permission.READ_PHONE_STATE"/>',
+          '<uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>',
+          '<uses-permission android:name="android.permission.WAKE_LOCK"/>',
+          '<uses-permission android:name="android.permission.FLASHLIGHT"/>',
+          '<uses-feature android:name="android.hardware.camera"/>',
+          '<uses-permission android:name="android.permission.WRITE_SETTINGS"/>',
+        ],
+      },
+      /* ios打包配置 */
+      ios: {},
+      /* SDK配置 */
+      sdkConfigs: {},
+    },
+    /* 模块配置 */
+    modules: {},
+    nvueStyleCompiler: 'uni-app',
+    splashscreen: {
+      alwaysShowBeforeRender: true,
+      autoclose: true,
+      delay: 0,
+      waiting: true,
+    },
+    usingComponents: true,
+  },
+  appid: APP_ID,
+  description: APP_DESCRIPTION,
+  h5: {
+    darkmode: true,
+    router: {
+      base: './',
+      mode: 'hash',
+    },
+    themeLocation: 'theme.json',
+  },
+  'mp-alipay': {
+    usingComponents: true,
+  },
+  'mp-baidu': {
+    usingComponents: true,
+  },
+  'mp-toutiao': {
+    usingComponents: true,
+  },
+  /* 小程序特有相关 */
+  'mp-weixin': {
+    __usePrivacyCheck__: true,
+    appid: APP_ID_WECHAT,
+    darkmode: true,
+    optimization: {
+      subPackages: true,
+    },
+    setting: {
+      minified: true,
+      urlCheck: false,
+    },
+    themeLocation: 'theme.json',
+    usingComponents: true,
+  },
+  name: APP_NAME,
+  /* 快应用特有相关 */
+  quickapp: {},
+  transformPx: false,
+  uniStatistics: {
+    enable: false,
+  },
+  versionCode: '100',
+  versionName: APP_VERSION,
+  vueVersion: '3',
+})

@@ -1,0 +1,11 @@
+{
+  "globals": {
+    "GetTest": true,
+    "PostTest": true,
+    "Http": true,
+    "GetParams": true,
+    "Types": true,
+    "User": true,
+    "Uni": true
+  }
+}
