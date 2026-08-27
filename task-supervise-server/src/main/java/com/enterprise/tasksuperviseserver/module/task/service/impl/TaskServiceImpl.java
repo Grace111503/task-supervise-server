@@ -9,6 +9,7 @@ import com.enterprise.tasksuperviseserver.module.task.entity.Task;
 import com.enterprise.tasksuperviseserver.module.task.entity.TaskAssignee;
 import com.enterprise.tasksuperviseserver.module.task.mapper.TaskAssigneeMapper;
 import com.enterprise.tasksuperviseserver.module.task.mapper.TaskMapper;
+import com.enterprise.tasksuperviseserver.module.task.service.TaskCacheService;
 import com.enterprise.tasksuperviseserver.module.task.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
@@ -40,29 +41,37 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskMapper taskMapper;
     private final TaskAssigneeMapper taskAssigneeMapper;
+    private final TaskCacheService taskCacheService;
 
     @Override
     public Map<String, Object> list(long page, long pageSize, Integer status, Integer priority,
                                      Long groupId, String keyword, Long assigneeId) {
+        Long currentUserId = UserContext.getUserId();
+        String cacheKey = TaskCacheService.buildKey(currentUserId, page, pageSize,
+                status, priority, groupId, keyword, assigneeId);
+
+        // 先查 Redis 缓存
+        Map<String, Object> cached = taskCacheService.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
         if (status != null) {
-            wrapper.eq(Task::getStatus, status);
+            wrapper.eq(Task::getStatus, status.toString());
         }
         if (priority != null) {
-            wrapper.eq(Task::getPriority, priority);
-        }
-        if (groupId != null) {
-            wrapper.eq(Task::getGroupId, groupId);
+            wrapper.eq(Task::getPriority, priority.toString());
         }
         if (StringUtils.hasText(keyword)) {
             wrapper.and(w -> w.like(Task::getTitle, keyword)
-                    .or().like(Task::getContent, keyword));
+                    .or().like(Task::getDescription, keyword));
         }
         if (assigneeId != null) {
-            wrapper.inSql(Task::getTaskId,
+            wrapper.inSql(Task::getId,
                     "SELECT task_id FROM task_assignee WHERE user_id = " + assigneeId);
         }
-        wrapper.orderByDesc(Task::getCreateTime);
+        wrapper.orderByDesc(Task::getCreatedAt);
 
         Page<Task> result = taskMapper.selectPage(Page.of(page, pageSize), wrapper);
 
@@ -71,6 +80,9 @@ public class TaskServiceImpl implements TaskService {
         map.put("page", result.getCurrent());
         map.put("pageSize", result.getSize());
         map.put("total", result.getTotal());
+
+        // 写入 Redis 缓存
+        taskCacheService.put(cacheKey, map);
         return map;
     }
 
@@ -87,29 +99,30 @@ public class TaskServiceImpl implements TaskService {
     public Task create(Task task) {
         Long creatorId = UserContext.getUserId();
         task.setCreatorId(creatorId);
-        task.setStatus(TaskConstant.STATUS_PENDING_RECEIVE);
-        if (task.getAssigneeMode() == null) {
-            task.setAssigneeMode(TaskConstant.ASSIGNEE_MODE_SINGLE);
+        if (task.getStatus() == null) {
+            task.setStatus("pending");
         }
         LocalDateTime now = LocalDateTime.now();
-        task.setCreateTime(now);
-        task.setUpdateTime(now);
+        task.setCreatedAt(now);
+        task.setUpdatedAt(now);
         taskMapper.insert(task);
+        taskCacheService.evictByUser(creatorId);
         return task;
     }
 
     @Override
     public Task update(Task task) {
-        if (task.getTaskId() == null) {
+        if (task.getId() == null) {
             throw new BusinessException("任务ID不能为空");
         }
-        Task existing = taskMapper.selectById(task.getTaskId());
+        Task existing = taskMapper.selectById(task.getId());
         if (existing == null) {
             throw new BusinessException(404, "任务不存在");
         }
-        task.setUpdateTime(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
-        return taskMapper.selectById(task.getTaskId());
+        taskCacheService.evictAll();
+        return taskMapper.selectById(task.getId());
     }
 
     @Override
@@ -118,7 +131,9 @@ public class TaskServiceImpl implements TaskService {
         if (existing == null) {
             throw new BusinessException(404, "任务不存在");
         }
-        return taskMapper.deleteById(taskId) > 0;
+        boolean ok = taskMapper.deleteById(taskId) > 0;
+        taskCacheService.evictAll();
+        return ok;
     }
 
     @Override
@@ -130,15 +145,16 @@ public class TaskServiceImpl implements TaskService {
         TaskAssignee assignee = new TaskAssignee();
         assignee.setTaskId(taskId);
         assignee.setUserId(assigneeId);
-        assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
-        assignee.setReceiveTime(LocalDateTime.now());
+        assignee.setStatus("pending");
+        assignee.setCreatedAt(LocalDateTime.now());
         taskAssigneeMapper.insert(assignee);
 
-        if (task.getStatus() != null && task.getStatus() == TaskConstant.STATUS_PENDING_RECEIVE) {
-            task.setStatus(TaskConstant.STATUS_IN_PROGRESS);
-            task.setUpdateTime(LocalDateTime.now());
+        if ("pending".equals(task.getStatus())) {
+            task.setStatus("in_progress");
+            task.setUpdatedAt(LocalDateTime.now());
             taskMapper.updateById(task);
         }
+        taskCacheService.evictAll();
     }
 
     @Override
@@ -147,9 +163,18 @@ public class TaskServiceImpl implements TaskService {
         if (task == null) {
             throw new BusinessException(404, "任务不存在");
         }
-        task.setStatus(status);
-        task.setUpdateTime(LocalDateTime.now());
+        // Integer 状态码转 String
+        String statusStr = switch (status) {
+            case 1 -> "pending";
+            case 2 -> "in_progress";
+            case 5 -> "completed";
+            case 6 -> "overdue";
+            default -> "pending";
+        };
+        task.setStatus(statusStr);
+        task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
+        taskCacheService.evictAll();
     }
 
     @Override
@@ -158,33 +183,33 @@ public class TaskServiceImpl implements TaskService {
 
         LambdaQueryWrapper<Task> baseWrapper = new LambdaQueryWrapper<>();
         baseWrapper.and(w -> w.eq(Task::getCreatorId, userId)
-                .or().inSql(Task::getTaskId,
+                .or().inSql(Task::getId,
                         "SELECT task_id FROM task_assignee WHERE user_id = " + userId));
 
         long total = taskMapper.selectCount(baseWrapper);
 
         long pending = taskMapper.selectCount(new LambdaQueryWrapper<Task>()
-                .eq(Task::getStatus, TaskConstant.STATUS_PENDING_RECEIVE)
+                .eq(Task::getStatus, "pending")
                 .and(w -> w.eq(Task::getCreatorId, userId)
-                        .or().inSql(Task::getTaskId,
+                        .or().inSql(Task::getId,
                                 "SELECT task_id FROM task_assignee WHERE user_id = " + userId)));
 
         long inProgress = taskMapper.selectCount(new LambdaQueryWrapper<Task>()
-                .eq(Task::getStatus, TaskConstant.STATUS_IN_PROGRESS)
+                .eq(Task::getStatus, "in_progress")
                 .and(w -> w.eq(Task::getCreatorId, userId)
-                        .or().inSql(Task::getTaskId,
+                        .or().inSql(Task::getId,
                                 "SELECT task_id FROM task_assignee WHERE user_id = " + userId)));
 
         long completed = taskMapper.selectCount(new LambdaQueryWrapper<Task>()
-                .eq(Task::getStatus, TaskConstant.STATUS_COMPLETED)
+                .eq(Task::getStatus, "completed")
                 .and(w -> w.eq(Task::getCreatorId, userId)
-                        .or().inSql(Task::getTaskId,
+                        .or().inSql(Task::getId,
                                 "SELECT task_id FROM task_assignee WHERE user_id = " + userId)));
 
         long overdue = taskMapper.selectCount(new LambdaQueryWrapper<Task>()
-                .eq(Task::getStatus, TaskConstant.STATUS_OVERDUE)
+                .eq(Task::getStatus, "overdue")
                 .and(w -> w.eq(Task::getCreatorId, userId)
-                        .or().inSql(Task::getTaskId,
+                        .or().inSql(Task::getId,
                                 "SELECT task_id FROM task_assignee WHERE user_id = " + userId)));
 
         Map<String, Object> map = new HashMap<>();
@@ -213,14 +238,13 @@ public class TaskServiceImpl implements TaskService {
                 try {
                     Task task = new Task();
                     task.setTitle(getStringCell(row.getCell(0)));
-                    task.setContent(getStringCell(row.getCell(1)));
-                    task.setPriority(getIntCell(row.getCell(2), TaskConstant.PRIORITY_NORMAL));
+                    task.setDescription(getStringCell(row.getCell(1)));
+                    task.setPriority(getStringCell(row.getCell(2)));
                     task.setCreatorId(creatorId);
-                    task.setStatus(TaskConstant.STATUS_PENDING_RECEIVE);
-                    task.setAssigneeMode(TaskConstant.ASSIGNEE_MODE_SINGLE);
+                    task.setStatus("pending");
                     LocalDateTime now = LocalDateTime.now();
-                    task.setCreateTime(now);
-                    task.setUpdateTime(now);
+                    task.setCreatedAt(now);
+                    task.setUpdatedAt(now);
 
                     if (!StringUtils.hasText(task.getTitle())) {
                         fail++;
@@ -265,13 +289,13 @@ public class TaskServiceImpl implements TaskService {
                 TaskAssignee assignee = new TaskAssignee();
                 assignee.setTaskId(taskId);
                 assignee.setUserId(assigneeId);
-                assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
-                assignee.setReceiveTime(LocalDateTime.now());
+                assignee.setStatus("pending");
+                assignee.setCreatedAt(LocalDateTime.now());
                 taskAssigneeMapper.insert(assignee);
 
-                if (task.getStatus() != null && task.getStatus() == TaskConstant.STATUS_PENDING_RECEIVE) {
-                    task.setStatus(TaskConstant.STATUS_IN_PROGRESS);
-                    task.setUpdateTime(LocalDateTime.now());
+                if ("pending".equals(task.getStatus())) {
+                    task.setStatus("in_progress");
+                    task.setUpdatedAt(LocalDateTime.now());
                     taskMapper.updateById(task);
                 }
                 success++;

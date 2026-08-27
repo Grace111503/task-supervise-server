@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 
 /**
  * 任务指派人实体
+ * <p>
+ * 映射表 task_assignee: assignee_id, task_id, user_id, assignee_name, status, created_at
  *
  * @author grq
  * @date 2026-08-26
@@ -20,15 +22,19 @@ import java.time.LocalDateTime;
 @TableName("task_assignee")
 public class TaskAssignee {
 
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
+    @TableId(value = "assignee_id", type = IdType.AUTO)
+    private Long assigneeId;
 
     private Long taskId;
 
     private Long userId;
 
-    private Integer assigneeType;
+    @TableField("assignee_name")
+    private String assigneeName;
 
-    private LocalDateTime receiveTime;
+    private String status;
+
+    @TableField("created_at")
+    private LocalDateTime createdAt;
 
 }

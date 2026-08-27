@@ -6,6 +6,9 @@ import com.enterprise.tasksuperviseserver.common.result.Result;
 import com.enterprise.tasksuperviseserver.module.statistics.entity.StatisticsReport;
 import com.enterprise.tasksuperviseserver.module.statistics.service.StatisticsReportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,11 +19,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 /**
  * 统计报表接口
  *
  * @author grq
- * @date 2026-08-26
+ * @date 2026-08-27
  * @version v1.0.0
  */
 @RestController
@@ -80,5 +86,23 @@ public class StatisticsReportController {
     public Result<Void> delete(@PathVariable Long reportId) {
         statisticsReportService.delete(reportId);
         return Result.success();
+    }
+
+    /**
+     * 导出统计报表为 Excel
+     * GET /api/v1/statistics/report/export
+     */
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(required = false) String period,
+            @RequestParam(required = false) String periodValue,
+            @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) Long userId) {
+        byte[] bytes = statisticsReportService.export(period, periodValue, deptId, userId);
+        String fileName = URLEncoder.encode("统计报表.xlsx", StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(bytes);
     }
 }

@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8082
 
 spring:
   application:
@@ -15,7 +15,7 @@ spring:
     time-zone: GMT+8
 
   datasource:
-    url: jdbc:mysql://118.25.44.250:3308/task_supervise_server?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://118.25.44.250:3308/task_supervise_server?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&connectionCollation=utf8mb4_unicode_ci
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: Root123456
@@ -27,7 +27,7 @@ spring:
 
   sql:
     init:
-      mode: never
+      mode: always
       schema-locations: classpath:db/schema.sql
       data-locations: classpath:db/data.sql
 
@@ -47,11 +47,17 @@ spring:
           min-idle: 0
 
   rabbitmq:
-    host: 118.25.44.250
+    host: localhost
     port: 5672
     username: admin
     password: 123456
     virtual-host: /task_supervise
+    # 连接超时（毫秒），避免启动时长时间卡住
+    connection-timeout: 5000
+    listener:
+      simple:
+        # 设为 true：RabbitMQ 可用时自动启动监听器
+        auto-startup: true
 
 # MyBatis-Plus 配置
 mybatis-plus:
@@ -91,6 +97,8 @@ logging:
 # 文件上传配置
 file:
   upload-dir: ${user.dir}/uploads
+  # 存储模式：local（本地文件系统）或 minio（MinIO 对象存储）
+  storage-mode: local
   # 允许的文件类型（逗号分隔），留空表示不限制
   allowed-types: doc,docx,xls,xlsx,pdf,jpg,jpeg,png,mp4
   # 单文件最大大小（MB）

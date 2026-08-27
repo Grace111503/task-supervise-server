@@ -67,7 +67,7 @@ public class InAppMessageController {
      */
     @PutMapping("/{messageId}")
     public Result<InAppMessage> update(@PathVariable Long messageId, @RequestBody InAppMessage entity) {
-        entity.setMessageId(messageId);
+        entity.setMsgId(messageId);
         return Result.success(inAppMessageService.update(entity));
     }
 

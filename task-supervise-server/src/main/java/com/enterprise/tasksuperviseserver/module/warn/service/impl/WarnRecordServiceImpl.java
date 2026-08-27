@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.enterprise.tasksuperviseserver.common.exception.BusinessException;
 import com.enterprise.tasksuperviseserver.module.warn.entity.WarnRecord;
 import com.enterprise.tasksuperviseserver.module.warn.mapper.WarnRecordMapper;
+import com.enterprise.tasksuperviseserver.module.warn.mq.WarnMessageProducer;
 import com.enterprise.tasksuperviseserver.module.warn.service.WarnRecordService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,7 +18,7 @@ import java.util.List;
  * 预警记录 Service 实现
  *
  * @author grq
- * @date 2026-08-26
+ * @date 2026-08-27
  * @version v1.0.0
  */
 @Service
@@ -24,6 +26,9 @@ import java.util.List;
 public class WarnRecordServiceImpl implements WarnRecordService {
 
     private final WarnRecordMapper warnRecordMapper;
+
+    @Autowired(required = false)
+    private WarnMessageProducer warnMessageProducer;
 
     @Override
     public Page<WarnRecord> page(int pageNo, int pageSize, Long taskId, Integer level) {
@@ -52,6 +57,10 @@ public class WarnRecordServiceImpl implements WarnRecordService {
         entity.setRecordId(null);
         entity.setPushTime(LocalDateTime.now());
         warnRecordMapper.insert(entity);
+        // 通过 RabbitMQ 异步推送站内消息（RabbitMQ 不可用时跳过）
+        if (warnMessageProducer != null) {
+            warnMessageProducer.send(entity);
+        }
         return entity;
     }
 

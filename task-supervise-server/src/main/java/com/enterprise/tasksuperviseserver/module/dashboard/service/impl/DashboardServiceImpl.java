@@ -66,9 +66,9 @@ public class DashboardServiceImpl implements DashboardService {
         Long userId = UserContext.getUserId();
         LambdaQueryWrapper<Task> wrapper = buildMyTaskWrapper(userId);
         if (status != null) {
-            wrapper.eq(Task::getStatus, status);
+            wrapper.eq(Task::getStatus, status.toString());
         }
-        wrapper.orderByDesc(Task::getCreateTime);
+        wrapper.orderByDesc(Task::getCreatedAt);
 
         Page<Task> result = taskMapper.selectPage(Page.of(page, pageSize), wrapper);
 
@@ -89,7 +89,7 @@ public class DashboardServiceImpl implements DashboardService {
         }
         return new LambdaQueryWrapper<Task>()
                 .and(w -> w.eq(Task::getCreatorId, userId)
-                        .or().inSql(Task::getTaskId,
+                        .or().inSql(Task::getId,
                                 "SELECT task_id FROM task_assignee WHERE user_id = " + userId));
     }
 }

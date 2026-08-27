@@ -107,11 +107,11 @@ public class AcceptanceServiceImpl implements AcceptanceService {
     public Acceptance verify(Long acceptId, Integer result, String opinion) {
         Acceptance acceptance = approve(acceptId, result, opinion);
         // 核验通过（ACCEPT_RESULT_PASS = 1）→ 更新 task 状态为已完成
-        if (TaskConstant.ACCEPT_RESULT_PASS.equals(result) && acceptance.getTaskId() != null) {
+        if (Integer.valueOf(TaskConstant.ACCEPT_RESULT_PASS).equals(result) && acceptance.getTaskId() != null) {
             Task task = taskMapper.selectById(acceptance.getTaskId());
-            if (task != null && !TaskConstant.STATUS_COMPLETED.equals(task.getStatus())) {
-                task.setStatus(TaskConstant.STATUS_COMPLETED);
-                task.setUpdateTime(LocalDateTime.now());
+            if (task != null && !"completed".equals(task.getStatus())) {
+                task.setStatus("completed");
+                task.setUpdatedAt(LocalDateTime.now());
                 taskMapper.updateById(task);
             }
         }

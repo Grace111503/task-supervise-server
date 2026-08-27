@@ -87,9 +87,7 @@ public class SysUserServiceImpl implements SysUserService {
         if (existing == null) {
             throw new BusinessException(404, "用户不存在");
         }
-        if (deptId != null) {
-            existing.setDeptId(deptId);
-        }
+        // 旧表结构无 deptId 字段，调岗仅更新角色
         if (org.springframework.util.StringUtils.hasText(roleCode)) {
             existing.setRoleCode(roleCode);
         }
@@ -103,7 +101,8 @@ public class SysUserServiceImpl implements SysUserService {
         if (existing == null) {
             throw new BusinessException(404, "用户不存在");
         }
-        existing.setStatus(1); // 1 = 离职归档
+        // 离职归档 → 逻辑删除（deleted=1）
+        existing.setDeleted(1);
         existing.setUpdateTime(LocalDateTime.now());
         sysUserMapper.updateById(existing);
     }

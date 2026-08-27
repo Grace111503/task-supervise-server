@@ -32,4 +32,15 @@ public interface StatisticsReportService {
      * 物理删除统计报表
      */
     void delete(Long reportId);
+
+    /**
+     * 导出统计报表为 Excel
+     *
+     * @param period     周期（可为 null）
+     * @param periodValue 周期值（可为 null）
+     * @param deptId     部门ID（可为 null）
+     * @param userId     用户ID（可为 null）
+     * @return Excel 文件字节数组
+     */
+    byte[] export(String period, String periodValue, Long deptId, Long userId);
 }

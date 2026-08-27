@@ -34,7 +34,7 @@ public class TaskAssigneeServiceImpl implements TaskAssigneeService {
         if (userId != null) {
             wrapper.eq(TaskAssignee::getUserId, userId);
         }
-        wrapper.orderByDesc(TaskAssignee::getReceiveTime);
+        wrapper.orderByDesc(TaskAssignee::getCreatedAt);
         return taskAssigneeMapper.selectPage(Page.of(pageNo, pageSize), wrapper);
     }
 
@@ -49,22 +49,22 @@ public class TaskAssigneeServiceImpl implements TaskAssigneeService {
 
     @Override
     public TaskAssignee create(TaskAssignee assignee) {
-        assignee.setReceiveTime(LocalDateTime.now());
+        assignee.setCreatedAt(LocalDateTime.now());
         taskAssigneeMapper.insert(assignee);
         return assignee;
     }
 
     @Override
     public TaskAssignee update(TaskAssignee assignee) {
-        if (assignee.getId() == null) {
+        if (assignee.getAssigneeId() == null) {
             throw new BusinessException("任务指派人ID不能为空");
         }
-        TaskAssignee existing = taskAssigneeMapper.selectById(assignee.getId());
+        TaskAssignee existing = taskAssigneeMapper.selectById(assignee.getAssigneeId());
         if (existing == null) {
             throw new BusinessException(404, "任务指派人不存在");
         }
         taskAssigneeMapper.updateById(assignee);
-        return taskAssigneeMapper.selectById(assignee.getId());
+        return taskAssigneeMapper.selectById(assignee.getAssigneeId());
     }
 
     @Override
@@ -80,6 +80,6 @@ public class TaskAssigneeServiceImpl implements TaskAssigneeService {
     public List<TaskAssignee> listByTaskId(Long taskId) {
         return taskAssigneeMapper.selectList(new LambdaQueryWrapper<TaskAssignee>()
                 .eq(TaskAssignee::getTaskId, taskId)
-                .orderByAsc(TaskAssignee::getAssigneeType));
+                .orderByAsc(TaskAssignee::getAssigneeId));
     }
 }

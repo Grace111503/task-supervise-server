@@ -28,18 +28,18 @@ public class InAppMessageServiceImpl implements InAppMessageService {
     private final InAppMessageMapper inAppMessageMapper;
 
     @Override
-    public Page<InAppMessage> page(int pageNo, int pageSize, Integer isRead) {
+    public Page<InAppMessage> page(int pageNo, int pageSize, Integer readStatus) {
         LambdaQueryWrapper<InAppMessage> wrapper = new LambdaQueryWrapper<>();
-        if (isRead != null) {
-            wrapper.eq(InAppMessage::getIsRead, isRead);
+        if (readStatus != null) {
+            wrapper.eq(InAppMessage::getReadStatus, readStatus);
         }
-        wrapper.orderByDesc(InAppMessage::getCreateTime);
+        wrapper.orderByDesc(InAppMessage::getCreatedAt);
         return inAppMessageMapper.selectPage(Page.of(pageNo, pageSize), wrapper);
     }
 
     @Override
-    public InAppMessage getById(Long messageId) {
-        InAppMessage message = inAppMessageMapper.selectById(messageId);
+    public InAppMessage getById(Long msgId) {
+        InAppMessage message = inAppMessageMapper.selectById(msgId);
         if (message == null) {
             throw new BusinessException(404, "消息不存在");
         }
@@ -48,58 +48,58 @@ public class InAppMessageServiceImpl implements InAppMessageService {
 
     @Override
     public InAppMessage create(InAppMessage entity) {
-        entity.setMessageId(null);
-        entity.setCreateTime(LocalDateTime.now());
+        entity.setMsgId(null);
+        entity.setCreatedAt(LocalDateTime.now());
         inAppMessageMapper.insert(entity);
         return entity;
     }
 
     @Override
     public InAppMessage update(InAppMessage entity) {
-        if (entity.getMessageId() == null) {
+        if (entity.getMsgId() == null) {
             throw new BusinessException("消息ID不能为空");
         }
-        InAppMessage exist = inAppMessageMapper.selectById(entity.getMessageId());
+        InAppMessage exist = inAppMessageMapper.selectById(entity.getMsgId());
         if (exist == null) {
             throw new BusinessException(404, "消息不存在");
         }
         inAppMessageMapper.updateById(entity);
-        return inAppMessageMapper.selectById(entity.getMessageId());
+        return inAppMessageMapper.selectById(entity.getMsgId());
     }
 
     @Override
-    public void delete(Long messageId) {
-        InAppMessage exist = inAppMessageMapper.selectById(messageId);
+    public void delete(Long msgId) {
+        InAppMessage exist = inAppMessageMapper.selectById(msgId);
         if (exist == null) {
             throw new BusinessException(404, "消息不存在");
         }
-        inAppMessageMapper.deleteById(messageId);
+        inAppMessageMapper.deleteById(msgId);
     }
 
     @Override
-    public List<InAppMessage> listMyMessages(Integer isRead) {
+    public List<InAppMessage> listMyMessages(Integer readStatus) {
         Long userId = UserContext.getUserId();
         if (userId == null) {
             throw new BusinessException(401, "未登录或登录已失效");
         }
         LambdaQueryWrapper<InAppMessage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(InAppMessage::getUserId, userId);
-        if (isRead != null) {
-            wrapper.eq(InAppMessage::getIsRead, isRead);
+        if (readStatus != null) {
+            wrapper.eq(InAppMessage::getReadStatus, readStatus);
         }
-        wrapper.orderByDesc(InAppMessage::getCreateTime);
+        wrapper.orderByDesc(InAppMessage::getCreatedAt);
         return inAppMessageMapper.selectList(wrapper);
     }
 
     @Override
-    public void markAsRead(Long messageId) {
-        InAppMessage exist = inAppMessageMapper.selectById(messageId);
+    public void markAsRead(Long msgId) {
+        InAppMessage exist = inAppMessageMapper.selectById(msgId);
         if (exist == null) {
             throw new BusinessException(404, "消息不存在");
         }
         LambdaUpdateWrapper<InAppMessage> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(InAppMessage::getMessageId, messageId)
-                .set(InAppMessage::getIsRead, 1);
+        updateWrapper.eq(InAppMessage::getMsgId, msgId)
+                .set(InAppMessage::getReadStatus, 1);
         inAppMessageMapper.update(null, updateWrapper);
     }
 }
