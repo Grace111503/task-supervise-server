@@ -81,6 +81,19 @@ public class OverdueAccountabilityServiceImpl implements OverdueAccountabilitySe
 
     @Override
     public OverdueAccountability recordReason(Long taskId, String reason, Integer overdueDays) {
+        // 先查询是否已有该任务的记录，有则更新，无则新建
+        OverdueAccountability existing = overdueAccountabilityMapper.selectOne(
+                new LambdaQueryWrapper<OverdueAccountability>()
+                        .eq(OverdueAccountability::getTaskId, taskId)
+                        .last("LIMIT 1"));
+        if (existing != null) {
+            existing.setReason(reason);
+            if (overdueDays != null) {
+                existing.setOverdueDays(overdueDays);
+            }
+            overdueAccountabilityMapper.updateById(existing);
+            return overdueAccountabilityMapper.selectById(existing.getAccountabilityId());
+        }
         OverdueAccountability a = new OverdueAccountability();
         a.setTaskId(taskId);
         a.setReason(reason);
@@ -90,6 +103,19 @@ public class OverdueAccountabilityServiceImpl implements OverdueAccountabilitySe
 
     @Override
     public OverdueAccountability recordAccountability(Long taskId, String disposition, Integer overdueDays) {
+        // 先查询是否已有该任务的记录，有则更新，无则新建
+        OverdueAccountability existing = overdueAccountabilityMapper.selectOne(
+                new LambdaQueryWrapper<OverdueAccountability>()
+                        .eq(OverdueAccountability::getTaskId, taskId)
+                        .last("LIMIT 1"));
+        if (existing != null) {
+            existing.setDisposition(disposition);
+            if (overdueDays != null) {
+                existing.setOverdueDays(overdueDays);
+            }
+            overdueAccountabilityMapper.updateById(existing);
+            return overdueAccountabilityMapper.selectById(existing.getAccountabilityId());
+        }
         OverdueAccountability a = new OverdueAccountability();
         a.setTaskId(taskId);
         a.setDisposition(disposition);

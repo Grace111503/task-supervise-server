@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 /**
  * 任务指派人实体
  * <p>
- * 映射表 task_assignee: assignee_id, task_id, user_id, assignee_name, status, created_at
+ * 映射表 task_assignee: assignee_id, task_id, user_id, assignee_name, assignee_type, status, created_at
  *
  * @author grq
  * @date 2026-08-26
@@ -31,6 +31,10 @@ public class TaskAssignee {
 
     @TableField("assignee_name")
     private String assigneeName;
+
+    /** 指派类型: 1-主负责人 2-协助人 */
+    @TableField("assignee_type")
+    private Integer assigneeType;
 
     private String status;
 

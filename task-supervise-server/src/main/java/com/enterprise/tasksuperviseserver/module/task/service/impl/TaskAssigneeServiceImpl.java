@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -50,6 +51,9 @@ public class TaskAssigneeServiceImpl implements TaskAssigneeService {
     @Override
     public TaskAssignee create(TaskAssignee assignee) {
         assignee.setCreatedAt(LocalDateTime.now());
+        if (assignee.getAssigneeType() == null) {
+            assignee.setAssigneeType(1); // 默认主负责人
+        }
         taskAssigneeMapper.insert(assignee);
         return assignee;
     }
@@ -81,5 +85,52 @@ public class TaskAssigneeServiceImpl implements TaskAssigneeService {
         return taskAssigneeMapper.selectList(new LambdaQueryWrapper<TaskAssignee>()
                 .eq(TaskAssignee::getTaskId, taskId)
                 .orderByAsc(TaskAssignee::getAssigneeId));
+    }
+
+    @Override
+    public List<TaskAssignee> batchCreate(Long taskId, List<Long> userIds, Integer assigneeType) {
+        if (taskId == null) {
+            throw new BusinessException("任务ID不能为空");
+        }
+        if (userIds == null || userIds.isEmpty()) {
+            throw new BusinessException("用户ID列表不能为空");
+        }
+
+        List<TaskAssignee> result = new ArrayList<>();
+        for (Long userId : userIds) {
+            TaskAssignee assignee = new TaskAssignee();
+            assignee.setTaskId(taskId);
+            assignee.setUserId(userId);
+            assignee.setAssigneeType(assigneeType);
+            assignee.setStatus("pending");
+            assignee.setCreatedAt(LocalDateTime.now());
+            taskAssigneeMapper.insert(assignee);
+            result.add(assignee);
+        }
+        return result;
+    }
+
+    @Override
+    public void updateAssigneeType(Long id, Integer assigneeType) {
+        if (id == null) {
+            throw new BusinessException("指派记录ID不能为空");
+        }
+        TaskAssignee existing = taskAssigneeMapper.selectById(id);
+        if (existing == null) {
+            throw new BusinessException(404, "任务指派人不存在");
+        }
+        existing.setAssigneeType(assigneeType);
+        taskAssigneeMapper.updateById(existing);
+    }
+
+    @Override
+    public List<TaskAssignee> listByTaskIdAndType(Long taskId, Integer assigneeType) {
+        LambdaQueryWrapper<TaskAssignee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TaskAssignee::getTaskId, taskId);
+        if (assigneeType != null) {
+            wrapper.eq(TaskAssignee::getAssigneeType, assigneeType);
+        }
+        wrapper.orderByAsc(TaskAssignee::getAssigneeId);
+        return taskAssigneeMapper.selectList(wrapper);
     }
 }

@@ -36,23 +36,40 @@
         username: form.username,
       })
 
+      // 记住用户名
+      if (rememberMe.value) {
+        uni.setStorageSync('remembered-username', form.username)
+      } else {
+        uni.removeStorageSync('remembered-username')
+      }
+
       uni.showToast({ icon: 'success', title: '登录成功' })
 
-      // 登录成功后跳转
+      // 显示tabBar并跳转首页
       setTimeout(() => {
+        uni.showTabBar()
         uni.switchTab({ url: '/pages/home/index' })
-      }, 1500)
+      }, 800)
     } catch (error: any) {
-      const message = error?.result?.message || '登录失败'
+      const message = error?.message || error?.data?.message || '登录失败'
       uni.showToast({ icon: 'none', title: message })
     } finally {
       loading.value = false
     }
   }
 
+  function goRegister() {
+    uni.navigateTo({ url: '/pages/login/register' })
+  }
+
   function goForgotPassword() {
     uni.showToast({ icon: 'none', title: '功能开发中' })
   }
+
+  onShow(() => {
+    // 登录页非tabBar页面，用try-catch防止报错
+    try { uni.hideTabBar() } catch {}
+  })
 
   onMounted(() => {
     // 检查是否记住用户名
@@ -118,6 +135,11 @@
           登录
         </wd-button>
       </view>
+
+      <!-- 注册入口 -->
+      <view class="register-link" @click="goRegister">
+        还没有账号？<text class="link-text">立即注册</text>
+      </view>
     </view>
 
     <!-- 底部信息 -->
@@ -179,13 +201,26 @@
     align-items: center;
     background-color: var(--wot-filled-oppo, #ffffff);
     border-radius: 16rpx;
-    padding: 24rpx 30rpx;
+    padding: 16rpx 30rpx;
     margin-bottom: 24rpx;
+    position: relative;
   }
 
   .item-icon {
     font-size: 40rpx;
     margin-right: 20rpx;
+    flex-shrink: 0;
+  }
+
+  /* 让wd-input占满剩余空间，清除/密码图标自然靠右 */
+  .form-item :deep(.wd-input) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .form-item :deep(.wd-input__action-icon),
+  .form-item :deep(.wd-input__password-icon) {
+    margin-left: auto;
   }
 
   .remember-row {
@@ -201,7 +236,18 @@
   }
 
   .login-btn {
-    margin-bottom: 40rpx;
+    margin-bottom: 20rpx;
+  }
+
+  .register-link {
+    text-align: center;
+    font-size: 28rpx;
+    color: var(--wot-text-auxiliary, #869a9c);
+  }
+
+  .link-text {
+    color: #07c160;
+    margin-left: 8rpx;
   }
 
   .login-footer {

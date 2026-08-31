@@ -48,4 +48,14 @@ public interface TaskFileService {
      * 按 feedbackId 查询文件
      */
     List<TaskFile> listByFeedbackId(Long feedbackId);
+
+    /**
+     * 绑定文件到反馈
+     */
+    void bindToFeedback(Long fileId, Long feedbackId);
+
+    /**
+     * 软删除文件（仅管理员）
+     */
+    void softDelete(Long fileId);
 }

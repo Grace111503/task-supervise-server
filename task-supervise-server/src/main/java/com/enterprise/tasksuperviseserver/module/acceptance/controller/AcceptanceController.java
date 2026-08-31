@@ -6,6 +6,7 @@ import com.enterprise.tasksuperviseserver.common.result.Result;
 import com.enterprise.tasksuperviseserver.module.acceptance.entity.Acceptance;
 import com.enterprise.tasksuperviseserver.module.acceptance.service.AcceptanceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -96,7 +98,7 @@ public class AcceptanceController {
      * 验收核验
      * POST /api/v1/acceptance/acceptance/{acceptId}/verify
      * body: { result, opinion? }
-     * 核验通过时任务状态自动标记为已完成
+     * 核验通过时任务状态自动标记为已完成；退回时自动创建整改任务
      */
     @PostMapping("/{acceptId}/verify")
     public Result<Acceptance> verify(@PathVariable Long acceptId,
@@ -104,5 +106,32 @@ public class AcceptanceController {
         Integer result = ((Number) body.get("result")).intValue();
         String opinion = body.get("opinion") != null ? body.get("opinion").toString() : null;
         return Result.success(acceptanceService.verify(acceptId, result, opinion));
+    }
+
+    /**
+     * 提交验收申请并上传成果材料（multipart/form-data，一步完成）
+     * <p>
+     * 参数：
+     * - taskId    (必填) 任务ID
+     * - acceptorId (必填) 验收人ID
+     * - files     成果材料（可选，支持多文件）
+     */
+    @PostMapping(value = "/apply", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<Acceptance> apply(
+            @RequestParam("taskId") Long taskId,
+            @RequestParam("acceptorId") Long acceptorId,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) {
+        Acceptance acceptance = new Acceptance();
+        acceptance.setTaskId(taskId);
+        acceptance.setAcceptorId(acceptorId);
+        return Result.success(acceptanceService.applyWithFiles(acceptance, files));
+    }
+
+    /**
+     * 按 taskId 查询验收记录（含关联文件）
+     */
+    @GetMapping("/task/{taskId}/with-files")
+    public Result<List<Acceptance>> listByTaskIdWithFiles(@PathVariable Long taskId) {
+        return Result.success(acceptanceService.listByTaskIdWithFiles(taskId));
     }
 }

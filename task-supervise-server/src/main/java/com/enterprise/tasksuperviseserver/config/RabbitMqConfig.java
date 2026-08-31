@@ -19,19 +19,16 @@ import java.util.Map;
 /**
  * RabbitMQ 配置类
  * <p>
- * 职责：
- * <ol>
- *   <li>声明 Exchange / Queue / Binding（始终创建，确保 broker 上存在）</li>
- *   <li>声明 MessageConverter（始终创建）</li>
- *   <li>配置 ListenerContainerFactory（仅在 auto-startup=true 时创建）</li>
- * </ol>
- * 监听器的实际启动由 spring.rabbitmq.listener.simple.auto-startup 控制。
+ * 所有 Bean 均通过 @ConditionalOnProperty 控制：
+ * spring.rabbitmq.listener.simple.auto-startup = true 时才创建，
+ * 本地未安装 RabbitMQ 时设为 false 即可完全跳过。
  *
  * @author grq
  * @date 2026-08-27
  * @version v1.0.0
  */
 @Configuration
+@ConditionalOnProperty(name = "spring.rabbitmq.listener.simple.auto-startup", havingValue = "true")
 public class RabbitMqConfig {
 
     public static final String EXCHANGE = "task.warn.exchange";

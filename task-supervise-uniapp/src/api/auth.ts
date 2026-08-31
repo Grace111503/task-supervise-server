@@ -6,6 +6,18 @@ export interface LoginParams {
   username: string
 }
 
+/** 注册参数 */
+export interface RegisterParams {
+  username: string
+  password: string
+  confirmPassword: string
+  name: string
+  deptId: number
+  position?: string
+  email?: string
+  phone?: string
+}
+
 /** 登录响应 */
 export interface LoginResult {
   admin: {
@@ -13,6 +25,12 @@ export interface LoginResult {
     name: string
     avatar?: string
     role?: string
+    /** 角色描述（中文） */
+    roleDesc?: string
+    /** 所属部门ID */
+    deptId?: number
+    /** 职位 */
+    position?: string
   }
   token: {
     access_token: string
@@ -29,6 +47,9 @@ export interface UserInfo {
   name: string
   phone?: string
   role?: string
+  roleDesc?: string
+  deptId?: number
+  position?: string
 }
 
 /** 认证 API */
@@ -41,6 +62,9 @@ export const authApi = {
   getUserInfo: () => http.get<UserInfo>('/user/info'),
   /** 用户登录 */
   login: (params: LoginParams) => http.post<LoginResult>('/auth/login', params),
+
+  /** 用户注册 */
+  register: (params: RegisterParams) => http.post<void>('/auth/register', params),
 
   /** 邮箱登录 */
   loginByEmail: (params: { email: string; password: string }) =>

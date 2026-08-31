@@ -83,7 +83,26 @@ public class TaskFileServiceImpl implements TaskFileService {
     public List<TaskFile> listByFeedbackId(Long feedbackId) {
         LambdaQueryWrapper<TaskFile> wrapper = new LambdaQueryWrapper<TaskFile>()
                 .eq(TaskFile::getFeedbackId, feedbackId)
-                .orderByDesc(TaskFile::getUploadTime);
+                .orderByAsc(TaskFile::getUploadTime);
         return taskFileMapper.selectList(wrapper);
+    }
+
+    @Override
+    public void bindToFeedback(Long fileId, Long feedbackId) {
+        TaskFile taskFile = taskFileMapper.selectById(fileId);
+        if (taskFile == null) {
+            throw new BusinessException(404, "文件不存在");
+        }
+        taskFile.setFeedbackId(feedbackId);
+        taskFileMapper.updateById(taskFile);
+    }
+
+    @Override
+    public void softDelete(Long fileId) {
+        TaskFile existing = taskFileMapper.selectById(fileId);
+        if (existing == null) {
+            throw new BusinessException(404, "文件不存在");
+        }
+        taskFileMapper.deleteById(fileId);
     }
 }

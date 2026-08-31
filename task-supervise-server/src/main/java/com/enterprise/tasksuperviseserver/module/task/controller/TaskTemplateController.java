@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 任务模板接口
  *
@@ -72,5 +75,38 @@ public class TaskTemplateController {
     @DeleteMapping("/{templateId}")
     public Result<Boolean> delete(@PathVariable Long templateId) {
         return Result.success("删除成功", taskTemplateService.delete(templateId));
+    }
+
+    /**
+     * 启用/停用模板
+     */
+    @PutMapping("/{templateId}/status")
+    public Result<Void> updateStatus(@PathVariable Long templateId, @RequestBody Map<String, Integer> body) {
+        Integer status = body.get("status");
+        taskTemplateService.updateStatus(templateId, status);
+        return Result.success();
+    }
+
+    /**
+     * 获取启用的模板列表
+     */
+    @GetMapping("/enabled")
+    public Result<List<TaskTemplate>> listEnabled(@RequestParam(required = false) Integer templateType) {
+        return Result.success(taskTemplateService.listEnabled(templateType));
+    }
+
+    /**
+     * 统计各类型模板数量
+     */
+    @GetMapping("/statistics")
+    public Result<Map<String, Object>> statistics() {
+        Map<String, Object> map = new java.util.HashMap<>();
+        map.put("total", taskTemplateService.countByType(null));
+        map.put("admin", taskTemplateService.countByType(TaskConstant.TEMPLATE_TYPE_ADMIN));
+        map.put("project", taskTemplateService.countByType(TaskConstant.TEMPLATE_TYPE_PROJECT));
+        map.put("rectify", taskTemplateService.countByType(TaskConstant.TEMPLATE_TYPE_RECTIFY));
+        map.put("meeting", taskTemplateService.countByType(TaskConstant.TEMPLATE_TYPE_MEETING));
+        map.put("client", taskTemplateService.countByType(TaskConstant.TEMPLATE_TYPE_CLIENT));
+        return Result.success(map);
     }
 }

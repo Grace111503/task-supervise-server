@@ -31,7 +31,9 @@
     if (!taskId.value) return
     loading.value = true
     try {
-      const task = await taskApi.getDetail(taskId.value)
+      const res = await taskApi.getDetail(taskId.value)
+      // 后端返回格式: { code, message, data: Task }
+      const task = res?.data || res
       form.title = task.title
       form.description = task.description || ''
       form.priority = task.priority

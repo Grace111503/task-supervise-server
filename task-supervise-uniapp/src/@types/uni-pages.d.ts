@@ -5,9 +5,14 @@
 
 type _LocationUrl =
   "/pages/home/index" |
+  "/pages/feedback/list" |
+  "/pages/feedback/submit" |
   "/pages/home/detail" |
   "/pages/home/edit" |
+  "/pages/home/overdue" |
   "/pages/login/index" |
+  "/pages/login/register" |
+  "/pages/message/index" |
   "/pages/mine/about" |
   "/pages/mine/index" |
   "/pages/mine/profile";

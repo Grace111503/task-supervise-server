@@ -11,7 +11,7 @@ interface EnvMap {
 
 const envMap: EnvMap = {
   dev: {
-    baseServer: 'http://localhost:8080/api/v1',
+    baseServer: 'http://localhost:8082/api/v1',
     otherServer: 'http://x.x.x.x/section',
     picsumServer: 'https://picsum.photos',
     uploadServer: 'https://xxx/alioss/uploadBase',

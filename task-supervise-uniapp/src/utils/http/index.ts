@@ -1,4 +1,4 @@
-﻿import { isEmpty } from '@iceywu/utils'
+import { isEmpty } from '@iceywu/utils'
 import un from '@uni-helper/uni-network'
 import apiServer from '@/config/domain'
 import { useUserStore } from '@/store/user'
@@ -102,10 +102,14 @@ instance.interceptors.request.use((config: any) => {
     }
   }
 
-  config.headers['content-type'] =
-    (config.method || '').toUpperCase() === 'GET'
-      ? CONTENT_TYPE_JSON_UTF8
-      : CONTENT_TYPE_JSON
+  // FormData 不能设置 Content-Type，浏览器会自动带上 boundary
+  const isFormData = config.data instanceof FormData
+  if (!isFormData) {
+    config.headers['content-type'] =
+      (config.method || '').toUpperCase() === 'GET'
+        ? CONTENT_TYPE_JSON_UTF8
+        : CONTENT_TYPE_JSON
+  }
 
   return config
 })
@@ -183,7 +187,8 @@ class PureHttp {
     param: Record<string, any> = {},
     config: Partial<RequestConfig> = {}
   ): Promise<T> {
-    const requestData = param.data ?? param.params ?? {}
+    // 支持直接传 data 对象（如 login({ username, password })）
+    const requestData = param.data ?? param.params ?? param
     return instance
       .request<T, T>({
         data: method.toUpperCase() === 'GET' ? undefined : requestData,

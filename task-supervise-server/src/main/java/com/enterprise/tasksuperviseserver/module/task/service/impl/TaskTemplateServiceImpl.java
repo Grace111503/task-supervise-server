@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 任务模板 Service 实现
@@ -34,7 +35,7 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
         if (templateType != null) {
             wrapper.eq(TaskTemplate::getTemplateType, templateType);
         }
-        wrapper.orderByDesc(TaskTemplate::getCreateTime);
+        wrapper.orderByDesc(TaskTemplate::getCreatedAt);
         return taskTemplateMapper.selectPage(Page.of(pageNo, pageSize), wrapper);
     }
 
@@ -49,7 +50,12 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
 
     @Override
     public TaskTemplate create(TaskTemplate template) {
-        template.setCreateTime(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        template.setCreatedAt(now);
+        template.setUpdatedAt(now);
+        if (template.getStatus() == null) {
+            template.setStatus(1); // 默认启用
+        }
         taskTemplateMapper.insert(template);
         return template;
     }
@@ -63,6 +69,7 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
         if (existing == null) {
             throw new BusinessException(404, "任务模板不存在");
         }
+        template.setUpdatedAt(LocalDateTime.now());
         taskTemplateMapper.updateById(template);
         return taskTemplateMapper.selectById(template.getTemplateId());
     }
@@ -74,5 +81,36 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
             throw new BusinessException(404, "任务模板不存在");
         }
         return taskTemplateMapper.deleteById(templateId) > 0;
+    }
+
+    @Override
+    public void updateStatus(Long templateId, Integer status) {
+        TaskTemplate template = taskTemplateMapper.selectById(templateId);
+        if (template == null) {
+            throw new BusinessException(404, "任务模板不存在");
+        }
+        template.setStatus(status);
+        template.setUpdatedAt(LocalDateTime.now());
+        taskTemplateMapper.updateById(template);
+    }
+
+    @Override
+    public List<TaskTemplate> listEnabled(Integer templateType) {
+        LambdaQueryWrapper<TaskTemplate> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TaskTemplate::getStatus, 1);
+        if (templateType != null) {
+            wrapper.eq(TaskTemplate::getTemplateType, templateType);
+        }
+        wrapper.orderByDesc(TaskTemplate::getCreatedAt);
+        return taskTemplateMapper.selectList(wrapper);
+    }
+
+    @Override
+    public long countByType(Integer templateType) {
+        LambdaQueryWrapper<TaskTemplate> wrapper = new LambdaQueryWrapper<>();
+        if (templateType != null) {
+            wrapper.eq(TaskTemplate::getTemplateType, templateType);
+        }
+        return taskTemplateMapper.selectCount(wrapper);
     }
 }

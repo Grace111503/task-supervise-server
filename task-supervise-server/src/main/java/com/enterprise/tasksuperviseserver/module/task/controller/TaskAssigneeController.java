@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 任务指派人接口
@@ -82,5 +83,40 @@ public class TaskAssigneeController {
     @GetMapping("/task/{taskId}")
     public Result<List<TaskAssignee>> listByTaskId(@PathVariable Long taskId) {
         return Result.success(taskAssigneeService.listByTaskId(taskId));
+    }
+
+    /**
+     * 批量添加指派人
+     * 请求体：{ "taskId": 1, "userIds": [2,3,4], "assigneeType": 1 }
+     */
+    @PostMapping("/batch")
+    public Result<List<TaskAssignee>> batchCreate(@RequestBody Map<String, Object> body) {
+        Long taskId = ((Number) body.get("taskId")).longValue();
+        @SuppressWarnings("unchecked")
+        List<Long> userIds = ((List<Number>) body.get("userIds"))
+                .stream().map(Number::longValue).toList();
+        Integer assigneeType = body.get("assigneeType") != null ? ((Number) body.get("assigneeType")).intValue() : 1;
+        return Result.success(taskAssigneeService.batchCreate(taskId, userIds, assigneeType));
+    }
+
+    /**
+     * 更新指派类型
+     * 请求体：{ "assigneeType": 2 }
+     */
+    @PutMapping("/{id}/type")
+    public Result<Void> updateAssigneeType(@PathVariable Long id, @RequestBody Map<String, Integer> body) {
+        Integer assigneeType = body.get("assigneeType");
+        taskAssigneeService.updateAssigneeType(id, assigneeType);
+        return Result.success();
+    }
+
+    /**
+     * 按任务ID和指派类型查询指派人列表
+     */
+    @GetMapping("/task/{taskId}/type/{assigneeType}")
+    public Result<List<TaskAssignee>> listByTaskIdAndType(
+            @PathVariable Long taskId,
+            @PathVariable Integer assigneeType) {
+        return Result.success(taskAssigneeService.listByTaskIdAndType(taskId, assigneeType));
     }
 }

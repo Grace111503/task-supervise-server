@@ -11,6 +11,22 @@
   const userStore = useUserStore()
   const { userInfo, isLogin } = storeToRefs(userStore)
 
+  /** 检查登录状态 */
+  function checkAuth() {
+    if (!isLogin.value) {
+      uni.showToast({ icon: 'none', title: '请先登录' })
+      setTimeout(() => {
+        uni.navigateTo({ url: '/pages/login/index' })
+      }, 500)
+      return false
+    }
+    return true
+  }
+
+  onShow(() => {
+    checkAuth()
+  })
+
   function goProfile() {
     if (!isLogin.value) {
       goLogin()
@@ -38,6 +54,11 @@
         if (res.confirm) {
           userStore.logOut()
           uni.showToast({ icon: 'success', title: '已退出' })
+          // 退出后隐藏tabBar并跳转登录页
+          setTimeout(() => {
+            try { uni.hideTabBar() } catch {}
+            uni.navigateTo({ url: '/pages/login/index' })
+          }, 800)
         }
       },
       title: '确认退出',
@@ -79,7 +100,14 @@
       <view class="user-info">
         <view class="user-name">{{ userInfo?.name || '未登录' }}</view>
         <view class="user-hint" v-if="!isLogin">点击登录账号</view>
-        <view class="user-role" v-else>{{ userInfo?.role || '用户' }}</view>
+        <view class="user-meta" v-else>
+          <view class="role-tag" :class="'role-' + userStore.userRole">
+            {{ userStore.userRoleDesc }}
+          </view>
+          <text class="user-dept" v-if="userStore.userPosition">
+            {{ userStore.userPosition }}
+          </text>
+        </view>
       </view>
       <view class="user-arrow">›</view>
     </view>
@@ -177,9 +205,36 @@
     color: var(--wot-text-auxiliary, #869a9c);
   }
 
-  .user-role {
-    font-size: 26rpx;
-    color: #07c160;
+  .user-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12rpx;
+  }
+
+  .role-tag {
+    font-size: 22rpx;
+    padding: 4rpx 16rpx;
+    border-radius: 20rpx;
+    color: #ffffff;
+    background-color: #07c160;
+  }
+
+  .role-tag.role-admin {
+    background-color: #f56c6c;
+  }
+
+  .role-tag.role-manager {
+    background-color: #e6a23c;
+  }
+
+  .role-tag.role-user {
+    background-color: #07c160;
+  }
+
+  .user-dept {
+    font-size: 24rpx;
+    color: var(--wot-text-auxiliary, #869a9c);
   }
 
   .user-arrow {

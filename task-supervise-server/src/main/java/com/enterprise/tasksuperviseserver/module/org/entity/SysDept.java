@@ -29,10 +29,16 @@ public class SysDept {
 
     private Integer sort;
 
+    private String leader;
+
+    private String phone;
+
     private Integer status;
 
+    @TableField(value = "created_at")
     private LocalDateTime createTime;
 
+    @TableField(value = "updated_at")
     private LocalDateTime updateTime;
 
 }

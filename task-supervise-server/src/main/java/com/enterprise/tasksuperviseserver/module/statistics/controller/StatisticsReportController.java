@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 统计报表接口
@@ -104,5 +106,27 @@ public class StatisticsReportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(bytes);
+    }
+
+    /**
+     * 自动生成统计报表
+     * POST /api/v1/statistics/report/generate
+     * body: { "period": "month", "periodValue": "2026-08", "deptId": null }
+     */
+    @PostMapping("/generate")
+    public Result<List<StatisticsReport>> generate(@RequestBody Map<String, Object> body) {
+        String period = (String) body.get("period");
+        String periodValue = (String) body.get("periodValue");
+        Long deptId = body.get("deptId") != null ? ((Number) body.get("deptId")).longValue() : null;
+        return Result.success(statisticsReportService.generate(period, periodValue, deptId));
+    }
+
+    /**
+     * 实时统计概览（不落库，直接从任务数据计算）
+     * GET /api/v1/statistics/report/overview
+     */
+    @GetMapping("/overview")
+    public Result<Map<String, Object>> overview(@RequestParam(required = false) Long deptId) {
+        return Result.success(statisticsReportService.overview(deptId));
     }
 }

@@ -99,4 +99,23 @@ public class InAppMessageController {
         inAppMessageService.markAsRead(messageId);
         return Result.success();
     }
+
+    /**
+     * 获取当前用户未读消息数
+     * GET /api/v1/warn/message/unread-count
+     */
+    @GetMapping("/unread-count")
+    public Result<Integer> getUnreadCount() {
+        return Result.success(inAppMessageService.getUnreadCount());
+    }
+
+    /**
+     * 标记当前用户所有消息为已读
+     * PUT /api/v1/warn/message/read-all
+     */
+    @PutMapping("/read-all")
+    public Result<Void> markAllAsRead() {
+        inAppMessageService.markAllAsRead();
+        return Result.success();
+    }
 }

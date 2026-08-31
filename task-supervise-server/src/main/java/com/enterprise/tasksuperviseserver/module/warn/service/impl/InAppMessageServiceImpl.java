@@ -102,4 +102,26 @@ public class InAppMessageServiceImpl implements InAppMessageService {
                 .set(InAppMessage::getReadStatus, 1);
         inAppMessageMapper.update(null, updateWrapper);
     }
+
+    @Override
+    public int getUnreadCount() {
+        Long userId = UserContext.getUserId();
+        if (userId == null) return 0;
+        LambdaQueryWrapper<InAppMessage> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(InAppMessage::getUserId, userId)
+                .eq(InAppMessage::getReadStatus, 0);
+        Long count = inAppMessageMapper.selectCount(wrapper);
+        return count != null ? count.intValue() : 0;
+    }
+
+    @Override
+    public void markAllAsRead() {
+        Long userId = UserContext.getUserId();
+        if (userId == null) return;
+        LambdaUpdateWrapper<InAppMessage> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(InAppMessage::getUserId, userId)
+                .eq(InAppMessage::getReadStatus, 0)
+                .set(InAppMessage::getReadStatus, 1);
+        inAppMessageMapper.update(null, updateWrapper);
+    }
 }

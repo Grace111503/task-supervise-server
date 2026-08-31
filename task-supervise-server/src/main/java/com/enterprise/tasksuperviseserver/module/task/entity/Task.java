@@ -37,9 +37,49 @@ public class Task {
     /** 优先级: high/medium/low */
     private String priority;
 
+    /** 所属部门ID，用于权限过滤 */
+    @TableField("dept_id")
+    private Long deptId;
+
+    /** 关联模板ID */
+    @TableField("template_id")
+    private Long templateId;
+
+    /** 分派模式: 1-单人 2-多人协办 */
+    @TableField("assignee_mode")
+    private Integer assigneeMode;
+
+    /** 任务组ID */
+    @TableField("group_id")
+    private Long groupId;
+
     private LocalDateTime deadline;
 
     private String remark;
+
+    /** 驳回原因（管理员/主管驳回时填写） */
+    @TableField("reject_remark")
+    private String rejectRemark;
+
+    /** 驳回时间 */
+    @TableField("rejected_at")
+    private LocalDateTime rejectedAt;
+
+    /** 验收结果: 0待验收 1通过 2驳回 */
+    @TableField("accept_result")
+    private Integer acceptResult;
+
+    /** 验收意见 */
+    @TableField("accept_remark")
+    private String acceptRemark;
+
+    /** 验收时间 */
+    @TableField("accepted_at")
+    private LocalDateTime acceptedAt;
+
+    /** 验收人ID */
+    @TableField("accepted_by")
+    private Long acceptedBy;
 
     private String attachments;
 
@@ -57,6 +97,10 @@ public class Task {
 
     @TableLogic
     private Integer deleted;
+
+    /** 逾期标记: 0-未标记 1-已标记（防止重复触发逾期提醒） */
+    @TableField("overdue_marked")
+    private Integer overdueMarked;
 
     @TableField("created_at")
     private LocalDateTime createdAt;

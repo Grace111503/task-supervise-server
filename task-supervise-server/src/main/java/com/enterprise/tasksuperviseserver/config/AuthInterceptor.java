@@ -1,6 +1,8 @@
 package com.enterprise.tasksuperviseserver.config;
 
 import com.enterprise.tasksuperviseserver.common.UserContext;
+import com.enterprise.tasksuperviseserver.module.org.entity.SysUser;
+import com.enterprise.tasksuperviseserver.module.org.mapper.SysUserMapper;
 import com.enterprise.tasksuperviseserver.utils.JwtUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,7 +18,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  *
  * @author grq
  * @date 2026-08-26
- * @version v1.0.0
+ * @version v2.0.0
  */
 @Slf4j
 @Component
@@ -24,6 +26,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class AuthInterceptor implements HandlerInterceptor {
 
     private final JwtUtil jwtUtil;
+    private final SysUserMapper sysUserMapper;
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -37,7 +40,6 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
         if (!StringUtils.hasText(authHeader)) {
-            // 尝试从参数获取 (兼容部分场景)
             authHeader = request.getParameter("token");
         }
 
@@ -52,13 +54,19 @@ public class AuthInterceptor implements HandlerInterceptor {
                     UserContext.setUserId(userId);
                     UserContext.setUsername(username);
                     UserContext.setRole(role);
+                    // 加载用户部门信息
+                    try {
+                        SysUser user = sysUserMapper.selectById(userId);
+                        if (user != null && user.getDeptId() != null) {
+                            UserContext.setDeptId(user.getDeptId());
+                        }
+                    } catch (Exception ignored) {
+                    }
                     return true;
                 }
             }
         }
 
-        // 未通过鉴权也放行，由 Controller 层根据业务决定是否需要登录态
-        // 真正严格控制的接口可以在 Controller 中校验 UserContext.getUserId()
         return true;
     }
 

@@ -47,7 +47,7 @@ spring:
           min-idle: 0
 
   rabbitmq:
-    host: localhost
+    host: 118.25.44.250
     port: 5672
     username: admin
     password: 123456
@@ -56,7 +56,7 @@ spring:
     connection-timeout: 5000
     listener:
       simple:
-        # 设为 true：RabbitMQ 可用时自动启动监听器
+        # 设为 true：RabbitMQ 可用时自动启动监听器；本地未装 RabbitMQ 时设为 false
         auto-startup: true
 
 # MyBatis-Plus 配置

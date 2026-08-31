@@ -28,6 +28,7 @@ declare module 'vue' {
     WdNavbar: typeof import('@wot-ui/ui/components/wd-navbar/wd-navbar.vue')['WdNavbar']
     WdRadio: typeof import('@wot-ui/ui/components/wd-radio/wd-radio.vue')['WdRadio']
     WdRadioGroup: typeof import('@wot-ui/ui/components/wd-radio-group/wd-radio-group.vue')['WdRadioGroup']
+    WdSlider: typeof import('@wot-ui/ui/components/wd-slider/wd-slider.vue')['WdSlider']
     WdTextarea: typeof import('@wot-ui/ui/components/wd-textarea/wd-textarea.vue')['WdTextarea']
   }
 }
@@ -50,5 +51,6 @@ declare global {
   const WdNavbar: typeof import('@wot-ui/ui/components/wd-navbar/wd-navbar.vue')['WdNavbar']
   const WdRadio: typeof import('@wot-ui/ui/components/wd-radio/wd-radio.vue')['WdRadio']
   const WdRadioGroup: typeof import('@wot-ui/ui/components/wd-radio-group/wd-radio-group.vue')['WdRadioGroup']
+  const WdSlider: typeof import('@wot-ui/ui/components/wd-slider/wd-slider.vue')['WdSlider']
   const WdTextarea: typeof import('@wot-ui/ui/components/wd-textarea/wd-textarea.vue')['WdTextarea']
 }

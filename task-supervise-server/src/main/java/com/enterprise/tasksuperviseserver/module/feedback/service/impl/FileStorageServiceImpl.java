@@ -1,5 +1,6 @@
 package com.enterprise.tasksuperviseserver.module.feedback.service.impl;
 
+import com.enterprise.tasksuperviseserver.common.UserContext;
 import com.enterprise.tasksuperviseserver.common.exception.BusinessException;
 import com.enterprise.tasksuperviseserver.config.MinioConfig;
 import com.enterprise.tasksuperviseserver.module.feedback.entity.TaskFile;
@@ -122,10 +123,13 @@ public class FileStorageServiceImpl implements FileStorageService {
         TaskFile taskFile = new TaskFile();
         taskFile.setTaskId(taskId);
         taskFile.setFeedbackId(feedbackId);
-        taskFile.setFileName(originalName);
+        taskFile.setOriginalName(originalName);
+        taskFile.setStoredName(storedName);
         taskFile.setFilePath(objectKey);
         taskFile.setFileType(extension.toUpperCase());
         taskFile.setFileSize(file.getSize());
+        taskFile.setUploaderId(UserContext.getUserId());
+        taskFile.setUploaderName(UserContext.getUsername());
         taskFile.setUploadTime(LocalDateTime.now());
         taskFileMapper.insert(taskFile);
 

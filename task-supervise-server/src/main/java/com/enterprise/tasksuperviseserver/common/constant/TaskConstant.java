@@ -21,6 +21,14 @@ public class TaskConstant {
     public static final int STATUS_COMPLETED = 5;
     public static final int STATUS_OVERDUE = 6;
 
+    // 状态字符串常量
+    public static final String STATUS_STR_PENDING = "pending";
+    public static final String STATUS_STR_IN_PROGRESS = "in_progress";
+    public static final String STATUS_STR_PENDING_FEEDBACK = "pending_feedback";
+    public static final String STATUS_STR_PENDING_ACCEPT = "pending_accept";
+    public static final String STATUS_STR_COMPLETED = "completed";
+    public static final String STATUS_STR_OVERDUE = "overdue";
+
     public static final int PRIORITY_NORMAL = 1;
     public static final int PRIORITY_IMPORTANT = 2;
     public static final int PRIORITY_URGENT = 3;
@@ -54,4 +62,30 @@ public class TaskConstant {
     public static final String MSG_TYPE_WARN = "WARN";
     public static final String MSG_TYPE_TASK = "TASK";
     public static final String MSG_TYPE_ACCEPT = "ACCEPT";
+
+    // ========== 模板类型 ==========
+    /** 行政任务 */
+    public static final int TEMPLATE_TYPE_ADMIN = 1;
+    /** 项目任务 */
+    public static final int TEMPLATE_TYPE_PROJECT = 2;
+    /** 整改任务 */
+    public static final int TEMPLATE_TYPE_RECTIFY = 3;
+    /** 会议任务 */
+    public static final int TEMPLATE_TYPE_MEETING = 4;
+    /** 客户对接任务 */
+    public static final int TEMPLATE_TYPE_CLIENT = 5;
+
+    // ========== 模板状态 ==========
+    public static final int TEMPLATE_STATUS_DISABLED = 0;
+    public static final int TEMPLATE_STATUS_ENABLED = 1;
+
+    // ========== 字段类型 ==========
+    public static final String FIELD_TYPE_TEXT = "text";
+    public static final String FIELD_TYPE_TEXTAREA = "textarea";
+    public static final String FIELD_TYPE_NUMBER = "number";
+    public static final String FIELD_TYPE_DATE = "date";
+    public static final String FIELD_TYPE_SELECT = "select";
+    public static final String FIELD_TYPE_FILE = "file";
+    public static final String FIELD_TYPE_CHECKBOX = "checkbox";
+    public static final String FIELD_TYPE_RADIO = "radio";
 }

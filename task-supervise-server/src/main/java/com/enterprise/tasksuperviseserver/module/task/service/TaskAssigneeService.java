@@ -26,7 +26,6 @@ public interface TaskAssigneeService {
 
     /**
      * 新增指派人
-     * 创建时设置 receiveTime = now
      */
     TaskAssignee create(TaskAssignee assignee);
 
@@ -44,4 +43,31 @@ public interface TaskAssigneeService {
      * 按 taskId 查询指派人列表
      */
     List<TaskAssignee> listByTaskId(Long taskId);
+
+    /**
+     * 批量添加指派人
+     *
+     * @param taskId    任务ID
+     * @param userIds   用户ID列表
+     * @param assigneeType 指派类型: 1-主负责人 2-协助人
+     * @return 添加的指派人列表
+     */
+    List<TaskAssignee> batchCreate(Long taskId, List<Long> userIds, Integer assigneeType);
+
+    /**
+     * 更新指派类型
+     *
+     * @param id           指派记录ID
+     * @param assigneeType 指派类型: 1-主负责人 2-协助人
+     */
+    void updateAssigneeType(Long id, Integer assigneeType);
+
+    /**
+     * 按任务ID和指派类型查询指派人列表
+     *
+     * @param taskId       任务ID
+     * @param assigneeType 指派类型
+     * @return 指派人列表
+     */
+    List<TaskAssignee> listByTaskIdAndType(Long taskId, Integer assigneeType);
 }

@@ -2,6 +2,7 @@ package com.enterprise.tasksuperviseserver.module.acceptance.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.enterprise.tasksuperviseserver.module.acceptance.entity.Acceptance;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -50,7 +51,21 @@ public interface AcceptanceService {
     Acceptance approve(Long acceptId, Integer result, String opinion);
 
     /**
-     * 验收核验（核验结果 + 核验意见，核验通过时任务状态置为已完成）
+     * 验收核验（核验结果 + 核验意见，核验通过时任务状态置为已完成，退回时自动创建整改任务）
      */
     Acceptance verify(Long acceptId, Integer result, String opinion);
+
+    /**
+     * 提交验收申请并上传成果材料（一步完成）
+     *
+     * @param acceptance 验收信息（需包含 taskId, acceptorId）
+     * @param files      上传的文件数组（可为 null）
+     * @return 创建的验收记录（含关联文件）
+     */
+    Acceptance applyWithFiles(Acceptance acceptance, MultipartFile[] files);
+
+    /**
+     * 按 taskId 查询验收记录（含关联文件）
+     */
+    List<Acceptance> listByTaskIdWithFiles(Long taskId);
 }

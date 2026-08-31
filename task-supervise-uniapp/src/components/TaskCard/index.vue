@@ -17,11 +17,13 @@
     statusChange: [task: Task, status: TaskStatus]
   }>()
 
-  const statusMap: Record<TaskStatus, { text: string; color: string }> = {
+  const statusMap: Record<string, { text: string; color: string }> = {
     completed: { color: '#07C160', text: '已完成' },
-    in_progress: { color: '#2196f3', text: '进行中' },
-    overdue: { color: '#f44336', text: '已逾期' },
-    pending: { color: '#ff9800', text: '待处理' },
+    in_progress: { color: '#1890ff', text: '进行中' },
+    overdue: { color: '#f5222d', text: '已逾期' },
+    pending: { color: '#8c8c8c', text: '待接收' },
+    pending_feedback: { color: '#fa8c16', text: '待反馈' },
+    pending_accept: { color: '#722ed1', text: '待验收' },
   }
 
   const priorityMap: Record<string, { text: string; color: string }> = {
@@ -29,6 +31,33 @@
     low: { color: '#4caf50', text: '低' },
     medium: { color: '#ff9800', text: '中' },
   }
+
+  /** 剩余工期文字 */
+  const deadlineText = computed(() => {
+    const task = props.task
+    if (!task.deadline) return ''
+    if (task.overdueDays && task.overdueDays > 0) {
+      return `逾期 ${task.overdueDays} 天`
+    }
+    if (task.remainingDays !== undefined && task.remainingDays !== null) {
+      if (task.remainingDays < 0) return `逾期 ${Math.abs(task.remainingDays)} 天`
+      if (task.remainingDays === 0) return '今天到期'
+      return `剩余 ${task.remainingDays} 天`
+    }
+    return ''
+  })
+
+  /** 工期颜色 */
+  const deadlineColor = computed(() => {
+    const task = props.task
+    if (task.overdueDays && task.overdueDays > 0) return '#f5222d'
+    if (task.remainingDays !== undefined && task.remainingDays !== null) {
+      if (task.remainingDays <= 1) return '#f5222d'
+      if (task.remainingDays <= 3) return '#fa8c16'
+      return '#52c41a'
+    }
+    return '#8c8c8c'
+  })
 
   function handleClick() {
     emit('click', props.task)
@@ -52,7 +81,7 @@
 <template>
   <view class="task-card" @click="handleClick">
     <view class="task-header">
-      <view class="task-title">{{ task.title }}</view>
+      <view class="task-title">{{ task.taskName || task.title }}</view>
       <view
         class="task-status"
         :style="{ backgroundColor: statusMap[task.status]?.color }"
@@ -73,8 +102,11 @@
         >
           {{ priorityMap[task.priority]?.text }}优先级
         </view>
-        <view class="task-deadline" v-if="task.deadline">
-          {{ task.deadline }}
+        <view class="task-deadline" v-if="deadlineText" :style="{ color: deadlineColor }">
+          {{ deadlineText }}
+        </view>
+        <view class="task-feedback-count" v-if="task.feedbackCount && task.feedbackCount > 0">
+          📝 {{ task.feedbackCount }}次反馈
         </view>
       </view>
       <view class="task-assignee" v-if="task.assigneeName">
@@ -164,6 +196,11 @@
 
   .task-deadline {
     font-size: 24rpx;
+    font-weight: 500;
+  }
+
+  .task-feedback-count {
+    font-size: 22rpx;
     color: var(--wot-text-auxiliary, #869a9c);
   }
 

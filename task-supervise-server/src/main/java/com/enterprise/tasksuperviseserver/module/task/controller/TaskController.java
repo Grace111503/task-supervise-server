@@ -102,12 +102,19 @@ public class TaskController {
     }
 
     /**
-     * 更新任务状态
+     * 更新任务状态（支持字符串和整数两种格式）
      * 对齐前端 PUT /task/{id}/status
      */
     @PutMapping("/{taskId}/status")
-    public Result<Void> updateStatus(@PathVariable Long taskId, @RequestBody Map<String, Integer> body) {
-        taskService.updateStatus(taskId, body.get("status"));
+    public Result<Void> updateStatus(@PathVariable Long taskId, @RequestBody Map<String, Object> body) {
+        Object statusObj = body.get("status");
+        if (statusObj instanceof String statusStr) {
+            // 字符串状态直接使用
+            taskService.updateStatus(taskId, statusStr);
+        } else if (statusObj instanceof Number statusNum) {
+            // 整数状态码需要转换
+            taskService.updateStatus(taskId, statusNum.intValue());
+        }
         return Result.success();
     }
 
@@ -130,6 +137,115 @@ public class TaskController {
         List<Long> taskIds = ((List<Number>) body.get("taskIds"))
                 .stream().map(Number::longValue).toList();
         Long assigneeId = ((Number) body.get("assigneeId")).longValue();
-        return Result.success(taskService.batchAssign(taskIds, assigneeId));
+        return Result.success(taskService.batchAssignResult(taskIds, assigneeId));
+    }
+
+    /**
+     * 多人协办模式分派任务
+     * 请求体：{ "taskId": 1, "assigneeIds": [2,3,4], "primaryId": 2 }
+     */
+    @PostMapping("/assign-multi")
+    public Result<Void> assignMulti(@RequestBody Map<String, Object> body) {
+        Long taskId = ((Number) body.get("taskId")).longValue();
+        @SuppressWarnings("unchecked")
+        List<Long> assigneeIds = ((List<Number>) body.get("assigneeIds"))
+                .stream().map(Number::longValue).toList();
+        Long primaryId = body.get("primaryId") != null ? ((Number) body.get("primaryId")).longValue() : null;
+        taskService.assignMulti(taskId, assigneeIds, primaryId);
+        return Result.success();
+    }
+
+    /**
+     * 根据模板创建任务
+     * 请求体：{ "templateId": 1, "title": "自定义标题", ... }
+     */
+    @PostMapping("/create-by-template")
+    public Result<Task> createByTemplate(@RequestBody Map<String, Object> body) {
+        Long templateId = ((Number) body.get("templateId")).longValue();
+        Task task = new Task();
+        if (body.containsKey("title")) {
+            task.setTitle((String) body.get("title"));
+        }
+        if (body.containsKey("description")) {
+            task.setDescription((String) body.get("description"));
+        }
+        if (body.containsKey("deadline")) {
+            task.setDeadline(java.time.LocalDateTime.parse((String) body.get("deadline")));
+        }
+        if (body.containsKey("deptId")) {
+            task.setDeptId(((Number) body.get("deptId")).longValue());
+        }
+        if (body.containsKey("groupId")) {
+            task.setGroupId(((Number) body.get("groupId")).longValue());
+        }
+        return Result.success(taskService.createByTemplate(templateId, task));
+    }
+
+    /**
+     * 按分组查询任务列表
+     */
+    @GetMapping("/group/{groupId}")
+    public Result<Map<String, Object>> listByGroup(
+            @PathVariable Long groupId,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "10") long pageSize) {
+        return Result.success(taskService.listByGroup(groupId, page, pageSize));
+    }
+
+    /**
+     * 驳回已完成的任务（管理员/主管）
+     * 请求体：{ "rejectRemark": "原因" }
+     */
+    @PutMapping("/{taskId}/reject")
+    public Result<Void> reject(@PathVariable Long taskId, @RequestBody Map<String, String> body) {
+        taskService.reject(taskId, body.get("rejectRemark"));
+        return Result.success();
+    }
+
+    /**
+     * 验收任务（管理员/主管）
+     * 请求体：{ "acceptResult": 1, "acceptRemark": "通过" }
+     */
+    @PutMapping("/{taskId}/accept")
+    public Result<Void> accept(@PathVariable Long taskId, @RequestBody Map<String, Object> body) {
+        Integer acceptResult = (Integer) body.get("acceptResult");
+        String acceptRemark = (String) body.get("acceptRemark");
+        taskService.accept(taskId, acceptResult, acceptRemark);
+        return Result.success();
+    }
+
+    /**
+     * 获取任务全流程时间线
+     */
+    @GetMapping("/{taskId}/timeline")
+    public Result<List<Map<String, Object>>> getTimeline(@PathVariable Long taskId) {
+        return Result.success(taskService.getTimeline(taskId));
+    }
+
+    /**
+     * 逾期任务清单（分页）
+     */
+    @GetMapping("/overdue/list")
+    public Result<Map<String, Object>> overdueList(
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "10") long pageSize,
+            @RequestParam(required = false) Long groupId,
+            @RequestParam(required = false) Long assigneeId) {
+        return Result.success(taskService.overdueList(page, pageSize, groupId, assigneeId));
+    }
+
+    /**
+     * 批量处置逾期任务
+     * 请求体：{ "taskIds": [1,2], "action": "complete|extend|reassign", "param": {...} }
+     */
+    @PutMapping("/batch-overdue-action")
+    public Result<Map<String, Object>> batchOverdueAction(@RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Long> taskIds = ((List<Number>) body.get("taskIds"))
+                .stream().map(Number::longValue).toList();
+        String action = (String) body.get("action");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> param = (Map<String, Object>) body.get("param");
+        return Result.success(taskService.batchOverdueAction(taskIds, action, param));
     }
 }

@@ -4,6 +4,7 @@ import com.enterprise.tasksuperviseserver.common.constant.TaskConstant;
 import com.enterprise.tasksuperviseserver.common.result.Result;
 import com.enterprise.tasksuperviseserver.module.org.dto.LoginByEmailDTO;
 import com.enterprise.tasksuperviseserver.module.org.dto.LoginDTO;
+import com.enterprise.tasksuperviseserver.module.org.dto.RegisterDTO;
 import com.enterprise.tasksuperviseserver.module.org.service.AuthService;
 import com.enterprise.tasksuperviseserver.module.org.vo.LoginResultVO;
 import jakarta.validation.Valid;
@@ -39,6 +40,15 @@ public class AuthController {
     public Result<LoginResultVO> loginByEmail(@Valid @RequestBody LoginByEmailDTO dto) {
         LoginResultVO result = authService.loginByEmail(dto);
         return Result.success(result);
+    }
+
+    /**
+     * 用户注册
+     */
+    @PostMapping("/register")
+    public Result<Void> register(@Valid @RequestBody RegisterDTO dto) {
+        authService.register(dto);
+        return Result.success();
     }
 
     /**

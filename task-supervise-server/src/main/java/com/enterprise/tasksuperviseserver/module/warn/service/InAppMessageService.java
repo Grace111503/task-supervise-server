@@ -49,4 +49,14 @@ public interface InAppMessageService {
      * 标记消息为已读（isRead = 1）
      */
     void markAsRead(Long messageId);
+
+    /**
+     * 获取当前用户未读消息数
+     */
+    int getUnreadCount();
+
+    /**
+     * 标记当前用户所有消息为已读
+     */
+    void markAllAsRead();
 }

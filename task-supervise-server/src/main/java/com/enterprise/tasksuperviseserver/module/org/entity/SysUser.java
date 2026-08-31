@@ -12,12 +12,11 @@ import java.time.LocalDateTime;
 /**
  * 系统用户实体
  * <p>
- * 映射数据库表 sys_user（旧表结构兼容）：
- * id → userId, username → userName, role → roleCode, deleted → deleted
+ * 三级权限体系: user-普通执行人员 / manager-部门主管 / admin-督办管理员
  *
  * @author grq
  * @date 2026-08-26
- * @version v1.0.0
+ * @version v2.0.0
  */
 @Data
 @Accessors(chain = true)
@@ -41,6 +40,14 @@ public class SysUser {
 
     private String avatar;
 
+    /** 所属部门ID */
+    @TableField(value = "dept_id")
+    private Long deptId;
+
+    /** 职位 */
+    private String position;
+
+    /** 角色: user-普通执行人员/manager-部门主管/admin-督办管理员 */
     @TableField(value = "role")
     private String roleCode;
 

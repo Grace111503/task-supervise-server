@@ -7,8 +7,12 @@ import com.enterprise.tasksuperviseserver.common.exception.BusinessException;
 import com.enterprise.tasksuperviseserver.module.acceptance.entity.RectifyTask;
 import com.enterprise.tasksuperviseserver.module.acceptance.mapper.RectifyTaskMapper;
 import com.enterprise.tasksuperviseserver.module.acceptance.service.RectifyTaskService;
+import com.enterprise.tasksuperviseserver.module.task.entity.Task;
+import com.enterprise.tasksuperviseserver.module.task.mapper.TaskMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,11 +24,13 @@ import java.util.List;
  * @date 2026-08-26
  * @version v1.0.0
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RectifyTaskServiceImpl implements RectifyTaskService {
 
     private final RectifyTaskMapper rectifyTaskMapper;
+    private final TaskMapper taskMapper;
 
     @Override
     public Page<RectifyTask> page(int pageNo, int pageSize) {
@@ -82,6 +88,7 @@ public class RectifyTaskServiceImpl implements RectifyTaskService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public RectifyTask complete(Long rectifyId, String rectifyOpinion) {
         RectifyTask rectifyTask = rectifyTaskMapper.selectById(rectifyId);
         if (rectifyTask == null) {
@@ -91,6 +98,19 @@ public class RectifyTaskServiceImpl implements RectifyTaskService {
         rectifyTask.setStatus(TaskConstant.RECTIFY_STATUS_RESUBMITTED);
         rectifyTask.setRectifyOpinion(rectifyOpinion);
         rectifyTaskMapper.updateById(rectifyTask);
+
+        // 整改完成后，将任务重新设为待验收
+        if (rectifyTask.getTaskId() != null) {
+            Task task = taskMapper.selectById(rectifyTask.getTaskId());
+            if (task != null) {
+                task.setStatus(TaskConstant.STATUS_STR_PENDING_ACCEPT);
+                task.setAcceptResult(TaskConstant.ACCEPT_RESULT_PENDING);
+                task.setUpdatedAt(LocalDateTime.now());
+                taskMapper.updateById(task);
+                log.info("整改完成，任务重新进入待验收: taskId={}, rectifyId={}", task.getId(), rectifyId);
+            }
+        }
+
         return rectifyTask;
     }
 }

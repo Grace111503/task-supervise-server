@@ -3,6 +3,9 @@ package com.enterprise.tasksuperviseserver.module.statistics.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.enterprise.tasksuperviseserver.module.statistics.entity.StatisticsReport;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 统计报表 Service
  */
@@ -43,4 +46,24 @@ public interface StatisticsReportService {
      * @return Excel 文件字节数组
      */
     byte[] export(String period, String periodValue, Long deptId, Long userId);
+
+    /**
+     * 自动生成统计报表
+     * <p>
+     * 从 task 表实时统计：派发总量、按期完成率、逾期数量、平均办结时长
+     *
+     * @param period      周期类型: month / quarter
+     * @param periodValue 周期值: 如 "2026-08" 或 "2026-Q3"
+     * @param deptId      部门ID（可为 null，表示全企业）
+     * @return 生成的报表列表
+     */
+    List<StatisticsReport> generate(String period, String periodValue, Long deptId);
+
+    /**
+     * 获取实时统计概览（不落库，直接从 task 表实时计算）
+     *
+     * @param deptId 部门ID（可为 null）
+     * @return 统计数据 Map
+     */
+    Map<String, Object> overview(Long deptId);
 }

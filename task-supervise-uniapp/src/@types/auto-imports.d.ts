@@ -35,6 +35,9 @@ declare global {
   const defineStore: typeof import('pinia').defineStore
   const effectScope: typeof import('vue').effectScope
   const encrypt: typeof import('../utils/http/sign').encrypt
+  const feedback: typeof import('../api/feedback').default
+  const feedbackApi: typeof import('../api/feedback').feedbackApi
+  const fileApi: typeof import('../api/feedback').fileApi
   const fileUpdate: typeof import('../api/ossUpload')['fileUpdate']
   const formatToken: typeof import('../utils/http/auth').formatToken
   const getActivePinia: typeof import('pinia').getActivePinia
@@ -76,6 +79,8 @@ declare global {
   const mapStores: typeof import('pinia').mapStores
   const mapWritableState: typeof import('pinia').mapWritableState
   const markRaw: typeof import('vue').markRaw
+  const message: typeof import('../api/message').default
+  const messageApi: typeof import('../api/message').messageApi
   const multipleTabsKey: typeof import('../utils/http/auth').multipleTabsKey
   const nextTick: typeof import('vue').nextTick
   const onActivated: typeof import('vue').onActivated
@@ -143,6 +148,7 @@ declare global {
   const tagFindAll: typeof import('../api/tag')['tagFindAll']
   const task: typeof import('../store/task').default
   const taskApi: typeof import('../api/task').taskApi
+  const taskAssigneeApi: typeof import('../api/task').taskAssigneeApi
   const test: typeof import('../store/test')['default']
   const to: typeof import('@iceywu/utils').to
   const toPro: typeof import('@iceywu/utils').toPro
@@ -216,10 +222,16 @@ declare global {
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, ShallowRef, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
   // @ts-ignore
-  export type { LoginParams, LoginResult, UserInfo } from '../api/auth'
+  export type { LoginParams, RegisterParams, LoginResult, UserInfo } from '../api/auth'
   import('../api/auth')
   // @ts-ignore
-  export type { TaskStatus, TaskPriority, Task, TaskListParams, TaskListResult, CreateTaskParams, UpdateTaskParams } from '../api/task'
+  export type { ProgressFeedback, TaskFile, AddFeedbackParams } from '../api/feedback'
+  import('../api/feedback')
+  // @ts-ignore
+  export type { InAppMessage } from '../api/message'
+  import('../api/message')
+  // @ts-ignore
+  export type { TaskStatus, TaskPriority, AssigneeMode, Task, TaskListParams, TaskListResult, CreateTaskParams, UpdateTaskParams, TaskTemplate, TaskAssignee } from '../api/task'
   import('../api/task')
   // @ts-ignore
   export type { DataInfo } from '../utils/http/auth'
@@ -253,6 +265,9 @@ declare module 'vue' {
     readonly defineStore: UnwrapRef<typeof import('pinia')['defineStore']>
     readonly effectScope: UnwrapRef<typeof import('vue')['effectScope']>
     readonly encrypt: UnwrapRef<typeof import('../utils/http/sign')['encrypt']>
+    readonly feedback: UnwrapRef<typeof import('../api/feedback')['default']>
+    readonly feedbackApi: UnwrapRef<typeof import('../api/feedback')['feedbackApi']>
+    readonly fileApi: UnwrapRef<typeof import('../api/feedback')['fileApi']>
     readonly formatToken: UnwrapRef<typeof import('../utils/http/auth')['formatToken']>
     readonly getActivePinia: UnwrapRef<typeof import('pinia')['getActivePinia']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
@@ -282,6 +297,8 @@ declare module 'vue' {
     readonly mapStores: UnwrapRef<typeof import('pinia')['mapStores']>
     readonly mapWritableState: UnwrapRef<typeof import('pinia')['mapWritableState']>
     readonly markRaw: UnwrapRef<typeof import('vue')['markRaw']>
+    readonly message: UnwrapRef<typeof import('../api/message')['default']>
+    readonly messageApi: UnwrapRef<typeof import('../api/message')['messageApi']>
     readonly multipleTabsKey: UnwrapRef<typeof import('../utils/http/auth')['multipleTabsKey']>
     readonly nextTick: UnwrapRef<typeof import('vue')['nextTick']>
     readonly onActivated: UnwrapRef<typeof import('vue')['onActivated']>
@@ -342,6 +359,7 @@ declare module 'vue' {
     readonly storeToRefs: UnwrapRef<typeof import('pinia')['storeToRefs']>
     readonly task: UnwrapRef<typeof import('../store/task')['default']>
     readonly taskApi: UnwrapRef<typeof import('../api/task')['taskApi']>
+    readonly taskAssigneeApi: UnwrapRef<typeof import('../api/task')['taskAssigneeApi']>
     readonly to: UnwrapRef<typeof import('@iceywu/utils')['to']>
     readonly toPro: UnwrapRef<typeof import('@iceywu/utils')['toPro']>
     readonly toRaw: UnwrapRef<typeof import('vue')['toRaw']>
