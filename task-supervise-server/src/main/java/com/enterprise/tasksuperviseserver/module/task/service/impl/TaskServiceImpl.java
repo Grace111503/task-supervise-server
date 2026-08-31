@@ -180,7 +180,7 @@ public class TaskServiceImpl implements TaskService {
         if (existing == null) {
             throw new BusinessException(404, "任务不存在");
         }
-        // 权限检查：普通用户只能编辑自己创建的任务
+        // 权限检查：普通执行人员只能编辑自己创建的任务
         checkEditPermission(existing);
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
@@ -194,18 +194,18 @@ public class TaskServiceImpl implements TaskService {
         if (existing == null) {
             throw new BusinessException(404, "任务不存在");
         }
-        // 权限检查：普通用户只能删除自己创建的任务
-        checkEditPermission(existing);
+        // 权限检查：普通执行人员只能删除已完成的任务
+        checkDeletePermission(existing);
         boolean ok = taskMapper.deleteById(taskId) > 0;
         taskCacheService.evictAll();
         return ok;
     }
 
     /**
-     * 编辑/删除权限检查
-     * - admin：可操作所有任务
-     * - manager：可操作本部门任务或自己创建的任务
-     * - user：只能操作自己创建的任务
+     * 编辑权限检查
+     * - admin：可编辑所有任务
+     * - manager：可编辑本部门任务或自己创建的任务
+     * - user（普通执行人员）：只能编辑自己创建的任务
      */
     private void checkEditPermission(Task task) {
         String role = UserContext.getRole();
@@ -224,11 +224,48 @@ public class TaskServiceImpl implements TaskService {
             }
             throw new BusinessException(403, "无权操作此任务");
         }
-        // 普通用户：只能操作自己创建的任务
+        // 普通执行人员：只能编辑自己创建的任务
         if (task.getCreatorId() != null && task.getCreatorId().equals(userId)) {
             return;
         }
-        throw new BusinessException(403, "普通用户只能编辑/删除自己创建的任务");
+        throw new BusinessException(403, "普通执行人员只能编辑自己创建的任务");
+    }
+
+    /**
+     * 删除权限检查
+     * - admin：可删除所有任务
+     * - manager：可删除本部门任务或自己创建的任务
+     * - user（普通执行人员）：自己创建的任务可删除；分配给自己的任务仅已完成可删除
+     */
+    private void checkDeletePermission(Task task) {
+        String role = UserContext.getRole();
+        Long userId = UserContext.getUserId();
+
+        if ("admin".equals(role)) {
+            return; // 管理员不限制
+        }
+        if ("manager".equals(role)) {
+            // 主管：自己创建的，或本部门的任务
+            if (task.getCreatorId() != null && task.getCreatorId().equals(userId)) {
+                return;
+            }
+            if (task.getDeptId() != null && task.getDeptId().equals(UserContext.getDeptId())) {
+                return;
+            }
+            throw new BusinessException(403, "无权删除此任务");
+        }
+        // 普通执行人员：自己创建的任务拥有完整权限
+        if (task.getCreatorId() != null && task.getCreatorId().equals(userId)) {
+            return;
+        }
+        // 分配给自己的任务：仅已完成可删除
+        if (task.getAssigneeId() != null && task.getAssigneeId().equals(userId)) {
+            if (!"completed".equals(task.getStatus())) {
+                throw new BusinessException(403, "任务未完成前不能删除");
+            }
+            return;
+        }
+        throw new BusinessException(403, "无权删除此任务");
     }
 
     @Override
