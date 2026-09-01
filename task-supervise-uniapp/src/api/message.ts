@@ -7,6 +7,8 @@ export interface InAppMessage {
   title: string
   content: string
   level: number // 1-普通 2-重要 3-紧急
+  msgType?: string // TASK-任务通知 WARN-预警 ACCEPT-验收通知
+  relatedId?: number // 关联任务ID
   readStatus: number // 0-未读 1-已读
   createdAt: string
 }

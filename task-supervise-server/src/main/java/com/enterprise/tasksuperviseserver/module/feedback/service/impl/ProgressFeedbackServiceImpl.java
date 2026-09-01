@@ -13,6 +13,7 @@ import com.enterprise.tasksuperviseserver.module.feedback.service.FileStorageSer
 import com.enterprise.tasksuperviseserver.module.feedback.service.ProgressFeedbackService;
 import com.enterprise.tasksuperviseserver.module.feedback.websocket.FeedbackWebSocket;
 import com.enterprise.tasksuperviseserver.module.task.entity.Task;
+import com.enterprise.tasksuperviseserver.module.warn.service.NotificationService;
 import com.enterprise.tasksuperviseserver.module.task.entity.TaskAssignee;
 import com.enterprise.tasksuperviseserver.module.task.mapper.TaskAssigneeMapper;
 import com.enterprise.tasksuperviseserver.module.task.mapper.TaskMapper;
@@ -46,6 +47,7 @@ public class ProgressFeedbackServiceImpl implements ProgressFeedbackService {
     private final TaskMapper taskMapper;
     private final TaskAssigneeMapper taskAssigneeMapper;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     @Override
     public Page<ProgressFeedback> page(int pageNo, int pageSize) {
@@ -123,10 +125,17 @@ public class ProgressFeedbackServiceImpl implements ProgressFeedbackService {
             log.warn("自动进入待验收失败: {}", e.getMessage());
         }
 
-        // 发送实时通知给任务创建人
+        // 发送站内消息通知任务创建人
         try {
             Task task = taskMapper.selectById(feedback.getTaskId());
             if (task != null && task.getCreatorId() != null && !task.getCreatorId().equals(userId)) {
+                String notifyTitle = "📝 新反馈提交";
+                String notifyContent = String.format("任务「%s」收到第%d阶段反馈，进度%d%%",
+                        task.getTitle(), feedback.getStage(), feedback.getProgressPercent());
+                notificationService.sendNotification(task.getCreatorId(), notifyTitle, notifyContent,
+                        1, TaskConstant.MSG_TYPE_TASK, task.getId());
+
+                // 同时通过 FeedbackWebSocket 推送（兼容已有逻辑）
                 String notification = String.format(
                         "{\"taskId\":%d,\"feedbackId\":%d,\"userName\":\"%s\",\"stage\":%d}",
                         feedback.getTaskId(), feedback.getFeedbackId(),

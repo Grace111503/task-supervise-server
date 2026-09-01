@@ -5,6 +5,7 @@
   import { useUserStore } from '~/store/user'
   import type { OrgUser } from '~/api/org'
   import { getToken } from '~/utils/http/auth'
+  import { onMessage, offMessage, connectMessage } from '~/utils/websocket'
   definePage(() => ({
     layout: 'home',
   }))
@@ -359,12 +360,35 @@
     }
   })
 
+  /** WebSocket 消息回调：实时更新未读数 */
+  function handleWsMessage(msg: { type: string; data: any }) {
+    if (msg.type === 'new_message') {
+      unreadCount.value++
+      // 显示 toast 提示
+      const data = msg.data || {}
+      uni.showToast({
+        icon: 'none',
+        title: data.title || '您有新消息',
+        duration: 2000,
+      })
+    }
+  }
+
   onMounted(() => {
     if (checkAuth()) {
       loadTasks(true)
       loadStats()
       loadUnreadCount()
+      // 确保 WebSocket 已连接并监听
+      if (userStore.userId) {
+        connectMessage(userStore.userId)
+      }
+      onMessage(handleWsMessage)
     }
+  })
+
+  onUnmounted(() => {
+    offMessage(handleWsMessage)
   })
 </script>
 

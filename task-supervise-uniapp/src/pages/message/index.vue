@@ -43,6 +43,10 @@
         console.error('标记已读失败:', error)
       }
     }
+    // 点击消息跳转到关联任务详情
+    if (msg.relatedId) {
+      uni.navigateTo({ url: `/pages/home/detail?id=${msg.relatedId}` })
+    }
   }
 
   async function handleReadAll() {
@@ -129,6 +133,9 @@
         </view>
         <view class="msg-title">{{ msg.title }}</view>
         <view class="msg-content">{{ msg.content }}</view>
+        <view class="msg-action" v-if="msg.relatedId">
+          <text class="action-text">点击查看任务详情 ›</text>
+        </view>
         <view class="unread-dot" v-if="msg.readStatus === 0"></view>
       </view>
     </scroll-view>
@@ -223,6 +230,16 @@
     font-size: 26rpx;
     color: var(--wot-text-secondary, #4e5969);
     line-height: 1.5;
+  }
+
+  .msg-action {
+    margin-top: 12rpx;
+  }
+
+  .action-text {
+    font-size: 24rpx;
+    color: #07c160;
+    font-weight: 500;
   }
 
   .unread-dot {

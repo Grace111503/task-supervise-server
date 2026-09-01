@@ -7,6 +7,7 @@ import {
   removeToken,
   setToken,
 } from '~/utils/http/auth'
+import { connectMessage, disconnectMessage } from '~/utils/websocket'
 
 const { login, loginByEmail } = authApi
 
@@ -51,6 +52,10 @@ export const useUserStore = defineStore(
           username: admin.name,
         }
         setToken(TokenInfo)
+        // 登录成功后连接消息 WebSocket
+        if (admin.id) {
+          connectMessage(admin.id)
+        }
         return true
       }
       // 登录失败时返回错误信息
@@ -77,6 +82,8 @@ export const useUserStore = defineStore(
     const logOut = () => {
       userInfo.value = {} as User.UserInfo
       removeToken()
+      // 退出登录时断开消息 WebSocket
+      disconnectMessage()
     }
 
     return {

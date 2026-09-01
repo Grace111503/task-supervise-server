@@ -138,9 +138,12 @@ CREATE TABLE in_app_message (
     title VARCHAR(200),
     content VARCHAR(2000),
     level INT DEFAULT 1 COMMENT '消息级别 1-普通 2-重要 3-紧急',
+    msg_type VARCHAR(20) COMMENT '消息类型 TASK-任务通知 WARN-预警 ACCEPT-验收通知',
+    related_id BIGINT COMMENT '关联任务ID，用于点击跳转',
     read_status TINYINT DEFAULT 0 COMMENT '0-未读 1-已读',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_read (user_id, read_status)
+    INDEX idx_user_read (user_id, read_status),
+    INDEX idx_related (related_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息';
 
 -- ========== 10. 进度反馈表 ==========

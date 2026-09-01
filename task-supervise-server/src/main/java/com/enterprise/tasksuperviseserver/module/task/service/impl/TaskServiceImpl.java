@@ -15,6 +15,7 @@ import com.enterprise.tasksuperviseserver.module.task.service.TaskService;
 import com.enterprise.tasksuperviseserver.module.task.service.TaskTemplateService;
 import com.enterprise.tasksuperviseserver.module.org.entity.SysUser;
 import com.enterprise.tasksuperviseserver.module.org.mapper.SysUserMapper;
+import com.enterprise.tasksuperviseserver.module.warn.service.NotificationService;
 import com.enterprise.tasksuperviseserver.module.task.vo.TaskListItemVO;
 import com.enterprise.tasksuperviseserver.module.feedback.entity.ProgressFeedback;
 import com.enterprise.tasksuperviseserver.module.feedback.mapper.ProgressFeedbackMapper;
@@ -33,8 +34,10 @@ import org.springframework.util.StringUtils;
 import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 任务 Service 实现
@@ -54,6 +57,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskTemplateService taskTemplateService;
     private final ProgressFeedbackMapper progressFeedbackMapper;
     private final SysUserMapper sysUserMapper;
+    private final NotificationService notificationService;
 
     /** 状态映射：前端整数 → 数据库字符串 */
     private static final Map<Integer, String> STATUS_MAP = Map.of(
@@ -253,6 +257,26 @@ public class TaskServiceImpl implements TaskService {
 
         // 清除所有缓存（新任务可能影响多个用户的可见性）
         taskCacheService.evictAll();
+
+        // ===== 通知执行人有新任务 =====
+        try {
+            String notifyTitle = "📋 新任务分配";
+            String notifyContent = String.format("您有新任务「%s」，请及时处理", task.getTitle());
+            if (isMultiMode && assigneeIds != null) {
+                for (Long uid : assigneeIds) {
+                    if (!uid.equals(creatorId)) {
+                        notificationService.sendNotification(uid, notifyTitle, notifyContent,
+                                1, TaskConstant.MSG_TYPE_TASK, task.getId());
+                    }
+                }
+            } else if (task.getAssigneeId() != null && !task.getAssigneeId().equals(creatorId)) {
+                notificationService.sendNotification(task.getAssigneeId(), notifyTitle, notifyContent,
+                        1, TaskConstant.MSG_TYPE_TASK, task.getId());
+            }
+        } catch (Exception e) {
+            log.warn("发送任务分配通知失败: {}", e.getMessage());
+        }
+
         return task;
     }
 
@@ -844,6 +868,36 @@ public class TaskServiceImpl implements TaskService {
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
         taskCacheService.evictAll();
+
+        // ===== 通知执行人验收结果 =====
+        try {
+            boolean passed = acceptResult == TaskConstant.ACCEPT_RESULT_PASS;
+            String notifyTitle = passed ? "✅ 任务验收通过" : "❌ 任务验收驳回";
+            String notifyContent = passed
+                    ? String.format("任务「%s」已通过验收", task.getTitle())
+                    : String.format("任务「%s」被驳回，原因：%s", task.getTitle(), acceptRemark);
+
+            // 通知执行人（单人模式 + 多人模式）
+            Set<Long> notifyIds = new HashSet<>();
+            if (task.getAssigneeId() != null) {
+                notifyIds.add(task.getAssigneeId());
+            }
+            // 多人模式：查询所有执行人
+            List<TaskAssignee> assignees = taskAssigneeMapper.selectList(
+                    new LambdaQueryWrapper<TaskAssignee>().eq(TaskAssignee::getTaskId, taskId));
+            for (TaskAssignee a : assignees) {
+                notifyIds.add(a.getUserId());
+            }
+            // 不通知操作人自己
+            notifyIds.remove(userId);
+
+            for (Long uid : notifyIds) {
+                notificationService.sendNotification(uid, notifyTitle, notifyContent,
+                        passed ? 1 : 2, TaskConstant.MSG_TYPE_ACCEPT, taskId);
+            }
+        } catch (Exception e) {
+            log.warn("发送验收通知失败: {}", e.getMessage());
+        }
     }
 
     @Override
