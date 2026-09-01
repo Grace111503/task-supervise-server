@@ -672,6 +672,10 @@ public class TaskServiceImpl implements TaskService {
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
 
+        // 先删除该任务的所有旧执行人记录，避免重复
+        taskAssigneeMapper.delete(new LambdaQueryWrapper<TaskAssignee>()
+                .eq(TaskAssignee::getTaskId, taskId));
+
         // 批量查询执行人信息
         Map<Long, SysUser> userMap = new HashMap<>();
         for (Long uid : assigneeIds) {

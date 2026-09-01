@@ -1,10 +1,9 @@
 -- 任务督办系统数据库脚本
--- 版本: v2.0.0
--- 说明: 每次启动都会重建 sys_user 和 task 表（DROP IF EXISTS），其余模块表为可选
+-- 版本: v2.0.1
+-- 说明: 使用 CREATE TABLE IF NOT EXISTS，首次启动建表，后续启动跳过，保护已有数据
 
 -- ========== 1. 用户表 ==========
-DROP TABLE IF EXISTS sys_user;
-CREATE TABLE sys_user (
+CREATE TABLE IF NOT EXISTS sys_user (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户ID',
     username VARCHAR(50) NOT NULL UNIQUE COMMENT '用户名',
     password VARCHAR(255) NOT NULL COMMENT '密码(加密存储)',
@@ -23,8 +22,7 @@ CREATE TABLE sys_user (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统用户表';
 
 -- ========== 2. 部门表 ==========
-DROP TABLE IF EXISTS sys_dept;
-CREATE TABLE sys_dept (
+CREATE TABLE IF NOT EXISTS sys_dept (
     dept_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '部门ID',
     parent_id BIGINT DEFAULT 0 COMMENT '父部门ID 0为顶级',
     dept_name VARCHAR(100) NOT NULL COMMENT '部门名称',
@@ -38,8 +36,7 @@ CREATE TABLE sys_dept (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='部门表';
 
 -- ========== 3. 角色表 ==========
-DROP TABLE IF EXISTS sys_role;
-CREATE TABLE sys_role (
+CREATE TABLE IF NOT EXISTS sys_role (
     role_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '角色ID',
     role_name VARCHAR(50) NOT NULL COMMENT '角色名称',
     role_code VARCHAR(50) NOT NULL UNIQUE COMMENT '角色编码',
@@ -50,8 +47,7 @@ CREATE TABLE sys_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
 
 -- ========== 4. 用户角色关联 ==========
-DROP TABLE IF EXISTS sys_user_role;
-CREATE TABLE sys_user_role (
+CREATE TABLE IF NOT EXISTS sys_user_role (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL COMMENT '用户ID',
     role_id BIGINT NOT NULL COMMENT '角色ID',
@@ -59,8 +55,7 @@ CREATE TABLE sys_user_role (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户角色关联';
 
 -- ========== 5. 任务组表 ==========
-DROP TABLE IF EXISTS task_group;
-CREATE TABLE task_group (
+CREATE TABLE IF NOT EXISTS task_group (
     group_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     group_name VARCHAR(100) NOT NULL,
     description VARCHAR(500),
@@ -69,8 +64,7 @@ CREATE TABLE task_group (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务组';
 
 -- ========== 6. 任务表 ==========
-DROP TABLE IF EXISTS task;
-CREATE TABLE task (
+CREATE TABLE IF NOT EXISTS task (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '任务ID',
     title VARCHAR(200) NOT NULL COMMENT '任务标题',
     description TEXT COMMENT '任务描述',
@@ -107,8 +101,7 @@ CREATE TABLE task (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务表';
 
 -- ========== 7. 预警规则表 ==========
-DROP TABLE IF EXISTS warn_rule;
-CREATE TABLE warn_rule (
+CREATE TABLE IF NOT EXISTS warn_rule (
     rule_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     rule_name VARCHAR(100) NOT NULL,
     condition_expr VARCHAR(500) COMMENT '触发条件表达式',
@@ -119,8 +112,7 @@ CREATE TABLE warn_rule (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预警规则';
 
 -- ========== 8. 预警记录表 ==========
-DROP TABLE IF EXISTS warn_record;
-CREATE TABLE warn_record (
+CREATE TABLE IF NOT EXISTS warn_record (
     record_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
     rule_id BIGINT,
@@ -131,8 +123,7 @@ CREATE TABLE warn_record (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预警记录';
 
 -- ========== 9. 站内消息表 ==========
-DROP TABLE IF EXISTS in_app_message;
-CREATE TABLE in_app_message (
+CREATE TABLE IF NOT EXISTS in_app_message (
     msg_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     title VARCHAR(200),
@@ -147,8 +138,7 @@ CREATE TABLE in_app_message (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息';
 
 -- ========== 10. 进度反馈表 ==========
-DROP TABLE IF EXISTS progress_feedback;
-CREATE TABLE progress_feedback (
+CREATE TABLE IF NOT EXISTS progress_feedback (
     feedback_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL COMMENT '关联任务ID',
     user_id BIGINT COMMENT '反馈人ID',
@@ -163,8 +153,7 @@ CREATE TABLE progress_feedback (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='进度反馈';
 
 -- ========== 11. 任务文件表 ==========
-DROP TABLE IF EXISTS task_file;
-CREATE TABLE task_file (
+CREATE TABLE IF NOT EXISTS task_file (
     file_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT COMMENT '关联任务ID',
     feedback_id BIGINT COMMENT '关联反馈ID',
@@ -184,8 +173,7 @@ CREATE TABLE task_file (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务文件';
 
 -- ========== 12. 验收表 ==========
-DROP TABLE IF EXISTS acceptance;
-CREATE TABLE acceptance (
+CREATE TABLE IF NOT EXISTS acceptance (
     accept_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
     applicant_id BIGINT,
@@ -199,8 +187,7 @@ CREATE TABLE acceptance (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='验收表';
 
 -- ========== 13. 流程配置表 ==========
-DROP TABLE IF EXISTS flow_config;
-CREATE TABLE flow_config (
+CREATE TABLE IF NOT EXISTS flow_config (
     flow_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     flow_name VARCHAR(100) NOT NULL,
     dept_id BIGINT,
@@ -210,8 +197,7 @@ CREATE TABLE flow_config (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程配置';
 
 -- ========== 14. 逾期追责表 ==========
-DROP TABLE IF EXISTS overdue_accountability;
-CREATE TABLE overdue_accountability (
+CREATE TABLE IF NOT EXISTS overdue_accountability (
     overdue_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
     reason VARCHAR(1000),
@@ -223,8 +209,7 @@ CREATE TABLE overdue_accountability (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='逾期追责';
 
 -- ========== 15. 整改任务表 ==========
-DROP TABLE IF EXISTS rectify_task;
-CREATE TABLE rectify_task (
+CREATE TABLE IF NOT EXISTS rectify_task (
     rectify_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
     rectify_content VARCHAR(2000),
@@ -235,8 +220,7 @@ CREATE TABLE rectify_task (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='整改任务';
 
 -- ========== 16. 操作日志表 ==========
-DROP TABLE IF EXISTS operation_log;
-CREATE TABLE operation_log (
+CREATE TABLE IF NOT EXISTS operation_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     module VARCHAR(50),
     action VARCHAR(50),
@@ -249,8 +233,7 @@ CREATE TABLE operation_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志';
 
 -- ========== 17. 统计表 ==========
-DROP TABLE IF EXISTS statistics_report;
-CREATE TABLE statistics_report (
+CREATE TABLE IF NOT EXISTS statistics_report (
     report_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     period VARCHAR(20) COMMENT 'day/week/month/quarter/year',
     period_value VARCHAR(20),
@@ -264,8 +247,7 @@ CREATE TABLE statistics_report (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='统计报表';
 
 -- ========== 18. 任务指派表 ==========
-DROP TABLE IF EXISTS task_assignee;
-CREATE TABLE task_assignee (
+CREATE TABLE IF NOT EXISTS task_assignee (
     assignee_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
@@ -278,8 +260,7 @@ CREATE TABLE task_assignee (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务指派';
 
 -- ========== 19. 任务模板表 ==========
-DROP TABLE IF EXISTS task_template;
-CREATE TABLE task_template (
+CREATE TABLE IF NOT EXISTS task_template (
     template_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     template_name VARCHAR(100) NOT NULL,
     template_type INT DEFAULT 1 COMMENT '模板类型: 1-行政 2-项目 3-整改 4-会议 5-客户对接',
@@ -295,8 +276,7 @@ CREATE TABLE task_template (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务模板';
 
 -- ========== 20. 任务模板字段表 ==========
-DROP TABLE IF EXISTS task_template_field;
-CREATE TABLE task_template_field (
+CREATE TABLE IF NOT EXISTS task_template_field (
     field_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     template_id BIGINT NOT NULL,
     field_name VARCHAR(100) COMMENT '字段名称',
@@ -312,8 +292,7 @@ CREATE TABLE task_template_field (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务模板字段';
 
 -- ========== 21. 任务进度节点表 ==========
-DROP TABLE IF EXISTS task_progress_node;
-CREATE TABLE task_progress_node (
+CREATE TABLE IF NOT EXISTS task_progress_node (
     node_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
     node_name VARCHAR(100),
