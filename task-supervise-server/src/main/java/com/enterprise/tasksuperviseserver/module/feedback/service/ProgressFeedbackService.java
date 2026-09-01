@@ -5,6 +5,7 @@ import com.enterprise.tasksuperviseserver.module.feedback.entity.ProgressFeedbac
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 进度反馈 Service
@@ -77,4 +78,12 @@ public interface ProgressFeedbackService {
      * @return 创建的反馈（含关联文件）
      */
     ProgressFeedback addWithFilesMultipart(ProgressFeedback feedback, MultipartFile[] files);
+
+    /**
+     * 查询多人任务各执行人的进度概览
+     *
+     * @param taskId 任务ID
+     * @return 每个执行人的进度信息（userId, userName, assigneeType, latestProgress, stage, latestContent, latestTime）
+     */
+    List<Map<String, Object>> listAssigneeProgress(Long taskId);
 }

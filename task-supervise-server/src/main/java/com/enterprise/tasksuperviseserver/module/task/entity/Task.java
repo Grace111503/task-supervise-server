@@ -108,4 +108,18 @@ public class Task {
     @TableField("updated_at")
     private LocalDateTime updatedAt;
 
+    // ===== 临时字段：仅用于创建时传递执行人信息，不映射数据库 =====
+
+    /** 多人协办的执行人ID列表（创建时传入） */
+    @TableField(exist = false)
+    private java.util.List<Long> assigneeIds;
+
+    /** 多人协办的主负责人ID（创建时传入） */
+    @TableField(exist = false)
+    private Long transientPrimaryId;
+
+    /** 多人协办的执行人ID列表（查询详情时输出） */
+    @TableField(exist = false)
+    private java.util.List<Long> multiAssigneeIds;
+
 }

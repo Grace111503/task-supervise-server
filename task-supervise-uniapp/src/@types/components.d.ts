@@ -12,6 +12,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AssigneePicker: typeof import('./../components/AssigneePicker.vue')['default']
     EmptyState: typeof import('./../components/EmptyState/index.vue')['default']
     NavBar: typeof import('./../components/NavBar/index.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
@@ -22,19 +23,20 @@ declare module 'vue' {
     WdButton: typeof import('@wot-ui/ui/components/wd-button/wd-button.vue')['WdButton']
     WdCheckbox: typeof import('@wot-ui/ui/components/wd-checkbox/wd-checkbox.vue')['WdCheckbox']
     WdConfigProvider: typeof import('@wot-ui/ui/components/wd-config-provider/wd-config-provider.vue')['WdConfigProvider']
+    WdDatetimePicker: typeof import('@wot-ui/ui/components/wd-datetime-picker/wd-datetime-picker.vue')['WdDatetimePicker']
     WdIcon: typeof import('@wot-ui/ui/components/wd-icon/wd-icon.vue')['WdIcon']
     WdInput: typeof import('@wot-ui/ui/components/wd-input/wd-input.vue')['WdInput']
     WdLoading: typeof import('@wot-ui/ui/components/wd-loading/wd-loading.vue')['WdLoading']
     WdNavbar: typeof import('@wot-ui/ui/components/wd-navbar/wd-navbar.vue')['WdNavbar']
     WdRadio: typeof import('@wot-ui/ui/components/wd-radio/wd-radio.vue')['WdRadio']
     WdRadioGroup: typeof import('@wot-ui/ui/components/wd-radio-group/wd-radio-group.vue')['WdRadioGroup']
-    WdSlider: typeof import('@wot-ui/ui/components/wd-slider/wd-slider.vue')['WdSlider']
     WdTextarea: typeof import('@wot-ui/ui/components/wd-textarea/wd-textarea.vue')['WdTextarea']
   }
 }
 
 // For TSX support
 declare global {
+  const AssigneePicker: typeof import('./../components/AssigneePicker.vue')['default']
   const EmptyState: typeof import('./../components/EmptyState/index.vue')['default']
   const NavBar: typeof import('./../components/NavBar/index.vue')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
@@ -45,12 +47,12 @@ declare global {
   const WdButton: typeof import('@wot-ui/ui/components/wd-button/wd-button.vue')['WdButton']
   const WdCheckbox: typeof import('@wot-ui/ui/components/wd-checkbox/wd-checkbox.vue')['WdCheckbox']
   const WdConfigProvider: typeof import('@wot-ui/ui/components/wd-config-provider/wd-config-provider.vue')['WdConfigProvider']
+  const WdDatetimePicker: typeof import('@wot-ui/ui/components/wd-datetime-picker/wd-datetime-picker.vue')['WdDatetimePicker']
   const WdIcon: typeof import('@wot-ui/ui/components/wd-icon/wd-icon.vue')['WdIcon']
   const WdInput: typeof import('@wot-ui/ui/components/wd-input/wd-input.vue')['WdInput']
   const WdLoading: typeof import('@wot-ui/ui/components/wd-loading/wd-loading.vue')['WdLoading']
   const WdNavbar: typeof import('@wot-ui/ui/components/wd-navbar/wd-navbar.vue')['WdNavbar']
   const WdRadio: typeof import('@wot-ui/ui/components/wd-radio/wd-radio.vue')['WdRadio']
   const WdRadioGroup: typeof import('@wot-ui/ui/components/wd-radio-group/wd-radio-group.vue')['WdRadioGroup']
-  const WdSlider: typeof import('@wot-ui/ui/components/wd-slider/wd-slider.vue')['WdSlider']
   const WdTextarea: typeof import('@wot-ui/ui/components/wd-textarea/wd-textarea.vue')['WdTextarea']
 }

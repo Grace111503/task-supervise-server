@@ -14,6 +14,7 @@ export interface Task {
   assigneeId?: number
   assigneeName?: string
   assigneeMode?: AssigneeMode
+  multiAssigneeIds?: number[]
   attachments?: string[]
   createdAt: string
   creatorId?: number

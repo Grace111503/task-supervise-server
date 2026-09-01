@@ -1,6 +1,5 @@
 package com.enterprise.tasksuperviseserver.config;
 
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
@@ -31,13 +31,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern(DATE_TIME_PATTERN);
 
     /**
-     * 全局 Jackson 配置：LocalDateTime 序列化为 "yyyy-MM-dd HH:mm:ss"，不再带 T
+     * 全局 Jackson 配置：LocalDateTime 序列化为 "yyyy-MM-dd HH:mm:ss"
+     * 反序列化支持多种格式：yyyy-MM-dd、yyyy-MM-dd HH:mm:ss、ISO 8601 等
      */
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
         return builder -> builder
                 .serializers(new LocalDateTimeSerializer(DATE_TIME_FORMATTER))
-                .deserializers(new LocalDateTimeDeserializer(DATE_TIME_FORMATTER));
+                .deserializersByType(
+                        java.util.Map.of(LocalDateTime.class, new FlexibleLocalDateTimeDeserializer())
+                );
     }
 
     @Override

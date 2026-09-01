@@ -70,16 +70,38 @@ public class FileController {
 
     /**
      * 预览成果材料（inline 方式，浏览器直接展示）
+     * 根据文件扩展名自动设置 Content-Type，图片/PDF 等可直接在浏览器内预览
      */
     @GetMapping("/preview/{fileId}")
     public ResponseEntity<Resource> preview(@PathVariable Long fileId) {
         FileStorageService.FileResource fr = fileStorageService.getFileResource(fileId);
-        String encodedName = URLEncoder.encode(fr.taskFile().getOriginalName(), StandardCharsets.UTF_8);
+        String originalName = fr.taskFile().getOriginalName();
+        String encodedName = URLEncoder.encode(originalName, StandardCharsets.UTF_8);
+
+        // 根据文件扩展名推断 MIME 类型
+        MediaType mediaType = resolveMediaType(originalName);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + encodedName + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(mediaType)
                 .body(fr.resource());
+    }
+
+    /**
+     * 根据文件名扩展名推断 MediaType，未知类型回退为 application/octet-stream
+     */
+    private MediaType resolveMediaType(String fileName) {
+        if (fileName == null) return MediaType.APPLICATION_OCTET_STREAM;
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return MediaType.IMAGE_JPEG;
+        if (lower.endsWith(".png")) return MediaType.IMAGE_PNG;
+        if (lower.endsWith(".gif")) return MediaType.IMAGE_GIF;
+        if (lower.endsWith(".bmp")) return new MediaType("image", "bmp");
+        if (lower.endsWith(".webp")) return new MediaType("image", "webp");
+        if (lower.endsWith(".pdf")) return MediaType.APPLICATION_PDF;
+        if (lower.endsWith(".txt")) return MediaType.TEXT_PLAIN;
+        if (lower.endsWith(".html") || lower.endsWith(".htm")) return MediaType.TEXT_HTML;
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 
     /**

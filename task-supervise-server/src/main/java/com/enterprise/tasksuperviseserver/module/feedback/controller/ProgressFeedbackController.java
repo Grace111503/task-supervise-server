@@ -164,4 +164,12 @@ public class ProgressFeedbackController {
 
         return Result.success(progressFeedbackService.addWithFilesMultipart(feedback, files));
     }
+
+    /**
+     * 查询多人任务各执行人的进度概览
+     */
+    @GetMapping("/task/{taskId}/assignee-progress")
+    public Result<List<Map<String, Object>>> listAssigneeProgress(@PathVariable Long taskId) {
+        return Result.success(progressFeedbackService.listAssigneeProgress(taskId));
+    }
 }

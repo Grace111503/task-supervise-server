@@ -96,6 +96,7 @@ public class JwtUtil {
 
     /**
      * 校验 Token 是否有效 (非空 + 未过期 + 类型正确)
+     * 兼容旧版 token（没有 type 字段时视为 access token）
      */
     public boolean validateToken(String token, String expectedType) {
         Claims claims = parseToken(token);
@@ -107,6 +108,10 @@ public class JwtUtil {
         }
         if (expectedType != null) {
             String type = claims.get(CLAIM_TYPE, String.class);
+            // 兼容旧版 token：如果没有 type 字段，默认视为 access token
+            if (type == null && "access".equalsIgnoreCase(expectedType)) {
+                return true;
+            }
             if (!expectedType.equalsIgnoreCase(type)) {
                 return false;
             }

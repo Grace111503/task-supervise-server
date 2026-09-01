@@ -88,15 +88,13 @@ instance.interceptors.request.use((config: any) => {
       const now = Date.now()
       const expired = Number.parseInt(`${expires}`) - now <= 0
       if (expired) {
-        uni.showToast({ icon: 'none', title: '登录expired' })
-        if (!_isRefreshing) _isRefreshing = true
-        return new Promise((resolve) => {
-          _requests.push((newToken) => {
-            config.headers = config.headers || {}
-            config.headers.Authorization = formatToken(newToken, 'Bearer')
-            resolve(config as any)
-          })
-        })
+        uni.showToast({ icon: 'none', title: '登录已过期，请重新登录' })
+        useUserStore().logOut()
+        removeToken()
+        setTimeout(() => {
+          uni.navigateTo({ url: '/pages/login/index' })
+        }, 500)
+        return Promise.reject(new Error('token expired'))
       }
       config.headers.Authorization = formatToken(accessToken, 'Bearer')
     }

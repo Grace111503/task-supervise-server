@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.enterprise.tasksuperviseserver.common.UserContext;
 import com.enterprise.tasksuperviseserver.common.exception.BusinessException;
+import com.enterprise.tasksuperviseserver.common.constant.TaskConstant;
 import com.enterprise.tasksuperviseserver.module.feedback.entity.ProgressFeedback;
 import com.enterprise.tasksuperviseserver.module.feedback.entity.TaskFile;
 import com.enterprise.tasksuperviseserver.module.feedback.mapper.ProgressFeedbackMapper;
@@ -12,6 +13,8 @@ import com.enterprise.tasksuperviseserver.module.feedback.service.FileStorageSer
 import com.enterprise.tasksuperviseserver.module.feedback.service.ProgressFeedbackService;
 import com.enterprise.tasksuperviseserver.module.feedback.websocket.FeedbackWebSocket;
 import com.enterprise.tasksuperviseserver.module.task.entity.Task;
+import com.enterprise.tasksuperviseserver.module.task.entity.TaskAssignee;
+import com.enterprise.tasksuperviseserver.module.task.mapper.TaskAssigneeMapper;
 import com.enterprise.tasksuperviseserver.module.task.mapper.TaskMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 进度反馈 Service 实现
@@ -39,6 +44,7 @@ public class ProgressFeedbackServiceImpl implements ProgressFeedbackService {
     private final ProgressFeedbackMapper progressFeedbackMapper;
     private final TaskFileMapper taskFileMapper;
     private final TaskMapper taskMapper;
+    private final TaskAssigneeMapper taskAssigneeMapper;
     private final FileStorageService fileStorageService;
 
     @Override
@@ -92,11 +98,25 @@ public class ProgressFeedbackServiceImpl implements ProgressFeedbackService {
                     && feedback.getProgressPercent() >= 100
                     && !"completed".equals(task.getStatus())
                     && !"pending_accept".equals(task.getStatus())) {
-                task.setStatus("pending_accept");
-                task.setAcceptResult(0); // 待验收
-                task.setUpdatedAt(LocalDateTime.now());
-                taskMapper.updateById(task);
-                log.info("任务进入待验收: taskId={}, progress={}", task.getId(), feedback.getProgressPercent());
+
+                boolean shouldTransition = false;
+
+                // 多人模式：需要所有执行人都达到100%才跳待验收
+                if (task.getAssigneeMode() != null
+                        && task.getAssigneeMode() == TaskConstant.ASSIGNEE_MODE_MULTI) {
+                    shouldTransition = allAssigneesCompleted(task.getId());
+                } else {
+                    // 单人模式：直接跳待验收
+                    shouldTransition = true;
+                }
+
+                if (shouldTransition) {
+                    task.setStatus("pending_accept");
+                    task.setAcceptResult(0);
+                    task.setUpdatedAt(LocalDateTime.now());
+                    taskMapper.updateById(task);
+                    log.info("任务进入待验收: taskId={}, progress={}", task.getId(), feedback.getProgressPercent());
+                }
             }
         } catch (Exception e) {
             log.warn("自动进入待验收失败: {}", e.getMessage());
@@ -218,9 +238,11 @@ public class ProgressFeedbackServiceImpl implements ProgressFeedbackService {
 
     @Override
     public Integer getNextStage(Long taskId) {
-        // 查询该任务当前最大阶段号
+        Long currentUserId = UserContext.getUserId();
+        // 按用户独立计算阶段号（多人模式下每人独立递增）
         LambdaQueryWrapper<ProgressFeedback> wrapper = new LambdaQueryWrapper<ProgressFeedback>()
                 .eq(ProgressFeedback::getTaskId, taskId)
+                .eq(ProgressFeedback::getUserId, currentUserId)
                 .orderByDesc(ProgressFeedback::getStage)
                 .last("LIMIT 1");
         ProgressFeedback latest = progressFeedbackMapper.selectOne(wrapper);
@@ -228,5 +250,67 @@ public class ProgressFeedbackServiceImpl implements ProgressFeedbackService {
             return 1;
         }
         return latest.getStage() + 1;
+    }
+
+    @Override
+    public List<Map<String, Object>> listAssigneeProgress(Long taskId) {
+        // 查询任务的所有执行人
+        LambdaQueryWrapper<TaskAssignee> aw = new LambdaQueryWrapper<TaskAssignee>()
+                .eq(TaskAssignee::getTaskId, taskId)
+                .orderByAsc(TaskAssignee::getAssigneeType);
+        List<TaskAssignee> assignees = taskAssigneeMapper.selectList(aw);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TaskAssignee assignee : assignees) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("userId", assignee.getUserId());
+            item.put("userName", assignee.getAssigneeName());
+            item.put("assigneeType", assignee.getAssigneeType());
+
+            // 查询该执行人的最新反馈
+            LambdaQueryWrapper<ProgressFeedback> fw = new LambdaQueryWrapper<ProgressFeedback>()
+                    .eq(ProgressFeedback::getTaskId, taskId)
+                    .eq(ProgressFeedback::getUserId, assignee.getUserId())
+                    .orderByDesc(ProgressFeedback::getStage)
+                    .last("LIMIT 1");
+            ProgressFeedback latest = progressFeedbackMapper.selectOne(fw);
+
+            if (latest != null) {
+                item.put("latestProgress", latest.getProgressPercent());
+                item.put("stage", latest.getStage());
+                item.put("latestContent", latest.getCompletedContent());
+                item.put("latestTime", latest.getFeedbackTime());
+            } else {
+                item.put("latestProgress", 0);
+                item.put("stage", 0);
+                item.put("latestContent", null);
+                item.put("latestTime", null);
+            }
+            result.add(item);
+        }
+        return result;
+    }
+
+    /**
+     * 检查多人任务的所有执行人是否都已完成（进度100%）
+     */
+    private boolean allAssigneesCompleted(Long taskId) {
+        LambdaQueryWrapper<TaskAssignee> aw = new LambdaQueryWrapper<TaskAssignee>()
+                .eq(TaskAssignee::getTaskId, taskId);
+        List<TaskAssignee> assignees = taskAssigneeMapper.selectList(aw);
+        if (assignees.isEmpty()) return false;
+
+        for (TaskAssignee assignee : assignees) {
+            LambdaQueryWrapper<ProgressFeedback> fw = new LambdaQueryWrapper<ProgressFeedback>()
+                    .eq(ProgressFeedback::getTaskId, taskId)
+                    .eq(ProgressFeedback::getUserId, assignee.getUserId())
+                    .orderByDesc(ProgressFeedback::getStage)
+                    .last("LIMIT 1");
+            ProgressFeedback latest = progressFeedbackMapper.selectOne(fw);
+            if (latest == null || latest.getProgressPercent() == null || latest.getProgressPercent() < 100) {
+                return false;
+            }
+        }
+        return true;
     }
 }

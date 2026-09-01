@@ -53,6 +53,9 @@ public class TaskListItemVO {
 
     // ===== 计算字段 =====
 
+    /** 多人协办模式下的执行人ID列表 */
+    private java.util.List<Long> multiAssigneeIds;
+
     /** 剩余天数（负数表示已逾期） */
     private Long remainingDays;
 

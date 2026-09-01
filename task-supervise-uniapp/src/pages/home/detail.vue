@@ -2,7 +2,7 @@
   import type { Task, TaskStatus } from '~/api/task'
   import { taskApi } from '~/api/task'
   import { feedbackApi } from '~/api/feedback'
-  import type { ProgressFeedback } from '~/api/feedback'
+  import type { ProgressFeedback, AssigneeProgress } from '~/api/feedback'
   import { useUserStore } from '@/store/user'
 
   definePage(() => ({
@@ -21,6 +21,13 @@
   const loadingFeedback = ref(false)
   const timeline = ref<any[]>([])
   const loadingTimeline = ref(false)
+  const assigneeProgressList = ref<AssigneeProgress[]>([])
+  const loadingAssigneeProgress = ref(false)
+
+  /** 是否为多人协办模式 */
+  const isMultiMode = computed(() => {
+    return task.value?.assigneeMode === 2 && (task.value?.multiAssigneeIds?.length ?? 0) > 0
+  })
 
   /** 是否可以编辑（创建人 / 管理员 / 主管） */
   const canEdit = computed(() => {
@@ -40,11 +47,17 @@
     return task.value?.creatorId === userStore.userId
   })
 
-  /** 是否为任务执行人（被分派的人，且不是创建人） */
+  /** 是否为任务执行人（单人 + 多人协办，且不是创建人） */
   const isAssignee = computed(() => {
     if (!task.value) return false
-    return task.value.assigneeId === userStore.userId
-      && task.value.creatorId !== userStore.userId
+    if (task.value.creatorId === userStore.userId) return false
+    // 单人模式
+    if (task.value.assigneeId === userStore.userId) return true
+    // 多人协办模式
+    if (task.value.multiAssigneeIds && task.value.multiAssigneeIds.length > 0) {
+      return task.value.multiAssigneeIds.includes(userStore.userId)
+    }
+    return false
   })
 
   /** 是否可以提交反馈（仅执行人） */
@@ -105,6 +118,20 @@
       console.error('加载时间线失败:', error)
     } finally {
       loadingTimeline.value = false
+    }
+  }
+
+  async function loadAssigneeProgress() {
+    if (!taskId.value) return
+    loadingAssigneeProgress.value = true
+    try {
+      const res = await feedbackApi.getAssigneeProgress(taskId.value)
+      const data = res?.data || res || []
+      assigneeProgressList.value = Array.isArray(data) ? data : []
+    } catch (error) {
+      console.error('加载执行人进度失败:', error)
+    } finally {
+      loadingAssigneeProgress.value = false
     }
   }
 
@@ -229,6 +256,7 @@
   onShow(() => {
     if (taskId.value) {
       loadFeedbackList()
+      loadAssigneeProgress()
     }
   })
 
@@ -237,6 +265,7 @@
     loadTask()
     loadFeedbackList()
     loadTimeline()
+    loadAssigneeProgress()
   })
 </script>
 
@@ -338,6 +367,40 @@
 
         <view class="empty-feedback" v-else>
           <text>暂无反馈记录</text>
+        </view>
+      </view>
+
+      <!-- 多人协办 - 执行人进度概览 -->
+      <view class="detail-section" v-if="isMultiMode && assigneeProgressList.length > 0">
+        <view class="section-title">👥 协办人员进度</view>
+        <view class="assignee-progress-list">
+          <view class="assignee-progress-item" v-for="item in assigneeProgressList" :key="item.userId">
+            <view class="assignee-info">
+              <view class="assignee-name">
+                <text>{{ item.userName }}</text>
+                <text class="assignee-type-tag" :class="item.assigneeType === 1 ? 'primary-tag' : 'normal-tag'">
+                  {{ item.assigneeType === 1 ? '主责' : '协办' }}
+                </text>
+              </view>
+              <text class="assignee-progress-value">{{ item.latestProgress ?? 0 }}%</text>
+            </view>
+            <view class="progress-bar-wrapper">
+              <view
+                class="progress-bar-fill"
+                :style="{
+                  width: (item.latestProgress ?? 0) + '%',
+                  backgroundColor: (item.latestProgress ?? 0) >= 100 ? '#07C160' : (item.latestProgress ?? 0) >= 50 ? '#1890ff' : '#fa8c16'
+                }"
+              ></view>
+            </view>
+            <view class="assignee-latest" v-if="item.latestContent">
+              <text class="latest-label">最新：</text>
+              <text class="latest-content">{{ item.latestContent }}</text>
+            </view>
+            <view class="assignee-latest-time" v-if="item.latestTime">
+              {{ formatTime(item.latestTime) }}
+            </view>
+          </view>
         </view>
       </view>
 
@@ -705,6 +768,100 @@
     font-size: 22rpx;
     color: #fa8c16;
     font-weight: 500;
+  }
+
+  /* 执行人进度概览 */
+  .assignee-progress-list {
+    margin-top: 16rpx;
+  }
+
+  .assignee-progress-item {
+    padding: 20rpx 0;
+    border-bottom: 1rpx solid var(--wot-border-color, #e5e6eb);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .assignee-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12rpx;
+  }
+
+  .assignee-name {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    font-size: 28rpx;
+    font-weight: 500;
+    color: var(--wot-text-main, #1d2129);
+  }
+
+  .assignee-type-tag {
+    font-size: 20rpx;
+    padding: 2rpx 12rpx;
+    border-radius: 8rpx;
+
+    &.primary-tag {
+      background-color: #fff1f0;
+      color: #f5222d;
+    }
+
+    &.normal-tag {
+      background-color: #e6f7ff;
+      color: #1890ff;
+    }
+  }
+
+  .assignee-progress-value {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #1890ff;
+  }
+
+  .progress-bar-wrapper {
+    height: 12rpx;
+    background-color: #f0f0f0;
+    border-radius: 6rpx;
+    overflow: hidden;
+    margin-bottom: 12rpx;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 6rpx;
+    transition: width 0.3s ease;
+  }
+
+  .assignee-latest {
+    display: flex;
+    align-items: flex-start;
+    gap: 8rpx;
+    margin-bottom: 8rpx;
+  }
+
+  .latest-label {
+    font-size: 24rpx;
+    color: var(--wot-text-auxiliary, #869a9c);
+    flex-shrink: 0;
+  }
+
+  .latest-content {
+    font-size: 24rpx;
+    color: var(--wot-text-secondary, #4e5969);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .assignee-latest-time {
+    font-size: 22rpx;
+    color: var(--wot-text-auxiliary, #869a9c);
   }
 
   .empty-state {

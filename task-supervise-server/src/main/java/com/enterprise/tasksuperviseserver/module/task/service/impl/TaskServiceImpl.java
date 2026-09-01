@@ -17,6 +17,7 @@ import com.enterprise.tasksuperviseserver.module.task.vo.TaskListItemVO;
 import com.enterprise.tasksuperviseserver.module.feedback.entity.ProgressFeedback;
 import com.enterprise.tasksuperviseserver.module.feedback.mapper.ProgressFeedbackMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
@@ -40,6 +41,7 @@ import java.util.Map;
  * @date 2026-08-27
  * @version v1.0.0
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService {
@@ -92,20 +94,26 @@ public class TaskServiceImpl implements TaskService {
 
         LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
 
+        // 多人协办子查询：task_assignee 表中当前用户参与的任务
+        String multiAssigneeSql = "SELECT task_id FROM task_assignee WHERE user_id = " + currentUserId;
+
         // ===== 三级权限数据过滤 =====
         if ("user".equals(currentRole)) {
-            // 普通执行人员：仅查看指派给我的 + 我创建的
+            // 普通执行人员：仅查看指派给我的(单人+多人) + 我创建的
             wrapper.and(w -> w.eq(Task::getAssigneeId, currentUserId)
+                    .or().inSql(Task::getId, multiAssigneeSql)
                     .or().eq(Task::getCreatorId, currentUserId));
         } else if ("manager".equals(currentRole)) {
-            // 部门主管：查看本部门所有任务 + 我创建的 + 指派给我的
+            // 部门主管：查看本部门所有任务 + 我创建的 + 指派给我的(单人+多人)
             if (currentDeptId != null) {
                 wrapper.and(w -> w.eq(Task::getDeptId, currentDeptId)
                         .or().eq(Task::getCreatorId, currentUserId)
-                        .or().eq(Task::getAssigneeId, currentUserId));
+                        .or().eq(Task::getAssigneeId, currentUserId)
+                        .or().inSql(Task::getId, multiAssigneeSql));
             } else {
                 // 没有部门信息时退化为个人视角
                 wrapper.and(w -> w.eq(Task::getAssigneeId, currentUserId)
+                        .or().inSql(Task::getId, multiAssigneeSql)
                         .or().eq(Task::getCreatorId, currentUserId));
             }
         }
@@ -153,6 +161,20 @@ public class TaskServiceImpl implements TaskService {
         if (task == null) {
             throw new BusinessException(404, "任务不存在");
         }
+        // 多人协办模式：填充执行人ID列表
+        if (task.getAssigneeMode() != null && task.getAssigneeMode() == TaskConstant.ASSIGNEE_MODE_MULTI) {
+            try {
+                LambdaQueryWrapper<TaskAssignee> aw = new LambdaQueryWrapper<TaskAssignee>()
+                        .eq(TaskAssignee::getTaskId, task.getId())
+                        .select(TaskAssignee::getUserId);
+                List<Long> userIds = taskAssigneeMapper.selectList(aw).stream()
+                        .map(TaskAssignee::getUserId)
+                        .toList();
+                task.setMultiAssigneeIds(userIds);
+            } catch (Exception e) {
+                log.warn("[getDetail] 查询多人协办执行人失败, taskId={}: {}", task.getId(), e.getMessage());
+            }
+        }
         return task;
     }
 
@@ -163,11 +185,47 @@ public class TaskServiceImpl implements TaskService {
         if (task.getStatus() == null) {
             task.setStatus("pending");
         }
+        if (task.getDeleted() == null) {
+            task.setDeleted(0);
+        }
         LocalDateTime now = LocalDateTime.now();
         task.setCreatedAt(now);
         task.setUpdatedAt(now);
+
+        // 多人协办模式：创建时直接设置 assigneeMode
+        boolean isMultiMode = task.getAssigneeMode() != null
+                && task.getAssigneeMode() == TaskConstant.ASSIGNEE_MODE_MULTI;
+        java.util.List<Long> assigneeIds = task.getAssigneeIds();
+        Long primaryId = task.getTransientPrimaryId();
+
+        // [DEBUG] 打印接收到的任务数据
+        log.info("[create] title={}, assigneeMode={}, isMultiMode={}, assigneeIds={}, primaryId={}",
+                task.getTitle(), task.getAssigneeMode(), isMultiMode, assigneeIds, primaryId);
+
         taskMapper.insert(task);
-        taskCacheService.evictByUser(creatorId);
+
+        // 多人协办：在同一个事务中写入 task_assignee 记录
+        if (isMultiMode && assigneeIds != null && !assigneeIds.isEmpty()) {
+            for (Long userId : assigneeIds) {
+                TaskAssignee assignee = new TaskAssignee();
+                assignee.setTaskId(task.getId());
+                assignee.setUserId(userId);
+                if (primaryId != null && primaryId.equals(userId)) {
+                    assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
+                } else if (primaryId == null && userId.equals(assigneeIds.get(0))) {
+                    assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
+                } else {
+                    assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_ASSIST);
+                }
+                assignee.setStatus("pending");
+                assignee.setCreatedAt(now);
+                taskAssigneeMapper.insert(assignee);
+            }
+            // 多人任务保持 pending 状态，等执行人真正开始处理时再变为 in_progress
+        }
+
+        // 清除所有缓存（新任务可能影响多个用户的可见性）
+        taskCacheService.evictAll();
         return task;
     }
 
@@ -258,12 +316,25 @@ public class TaskServiceImpl implements TaskService {
         if (task.getCreatorId() != null && task.getCreatorId().equals(userId)) {
             return;
         }
-        // 分配给自己的任务：仅已完成可删除
+        // 分配给自己的任务（单人模式）：仅已完成可删除
         if (task.getAssigneeId() != null && task.getAssigneeId().equals(userId)) {
             if (!"completed".equals(task.getStatus())) {
                 throw new BusinessException(403, "任务未完成前不能删除");
             }
             return;
+        }
+        // 多人协办任务：检查 task_assignee 表
+        if (task.getAssigneeMode() != null && task.getAssigneeMode() == TaskConstant.ASSIGNEE_MODE_MULTI) {
+            LambdaQueryWrapper<TaskAssignee> aw = new LambdaQueryWrapper<TaskAssignee>()
+                    .eq(TaskAssignee::getTaskId, task.getId())
+                    .eq(TaskAssignee::getUserId, userId);
+            Long count = taskAssigneeMapper.selectCount(aw);
+            if (count != null && count > 0) {
+                if (!"completed".equals(task.getStatus())) {
+                    throw new BusinessException(403, "任务未完成前不能删除");
+                }
+                return;
+            }
         }
         throw new BusinessException(403, "无权删除此任务");
     }
@@ -404,18 +475,24 @@ public class TaskServiceImpl implements TaskService {
         return map;
     }
 
-    /** 根据角色应用过滤条件 */
+    /** 根据角色应用过滤条件（包含多人协办任务） */
     private void applyRoleFilter(LambdaQueryWrapper<Task> wrapper, String role, Long userId, Long deptId) {
+        // 多人协办子查询：task_assignee 表中当前用户参与的任务
+        String multiAssigneeSql = "SELECT task_id FROM task_assignee WHERE user_id = " + userId;
+
         if ("user".equals(role)) {
             wrapper.and(w -> w.eq(Task::getAssigneeId, userId)
+                    .or().inSql(Task::getId, multiAssigneeSql)
                     .or().eq(Task::getCreatorId, userId));
         } else if ("manager".equals(role)) {
             if (deptId != null) {
                 wrapper.and(w -> w.eq(Task::getDeptId, deptId)
                         .or().eq(Task::getCreatorId, userId)
-                        .or().eq(Task::getAssigneeId, userId));
+                        .or().eq(Task::getAssigneeId, userId)
+                        .or().inSql(Task::getId, multiAssigneeSql));
             } else {
                 wrapper.and(w -> w.eq(Task::getAssigneeId, userId)
+                        .or().inSql(Task::getId, multiAssigneeSql)
                         .or().eq(Task::getCreatorId, userId));
             }
         }
@@ -451,6 +528,7 @@ public class TaskServiceImpl implements TaskService {
                     task.setPriority(getStringCell(row.getCell(2)));
                     task.setCreatorId(creatorId);
                     task.setStatus("pending");
+                    task.setDeleted(0);
                     LocalDateTime now = LocalDateTime.now();
                     task.setCreatedAt(now);
                     task.setUpdatedAt(now);
@@ -893,6 +971,21 @@ public class TaskServiceImpl implements TaskService {
         vo.setAssigneeName(task.getAssigneeName());
         vo.setCreatedAt(task.getCreatedAt());
         vo.setUpdatedAt(task.getUpdatedAt());
+
+        // 多人协办模式：查询执行人ID列表
+        if (task.getAssigneeMode() != null && task.getAssigneeMode() == TaskConstant.ASSIGNEE_MODE_MULTI) {
+            try {
+                LambdaQueryWrapper<TaskAssignee> aw = new LambdaQueryWrapper<TaskAssignee>()
+                        .eq(TaskAssignee::getTaskId, task.getId())
+                        .select(TaskAssignee::getUserId);
+                List<Long> userIds = taskAssigneeMapper.selectList(aw).stream()
+                        .map(TaskAssignee::getUserId)
+                        .toList();
+                vo.setMultiAssigneeIds(userIds);
+            } catch (Exception e) {
+                log.warn("[convertToVO] 查询多人协办执行人失败, taskId={}: {}", task.getId(), e.getMessage());
+            }
+        }
 
         // 计算剩余工期 / 逾期天数
         LocalDateTime now = LocalDateTime.now();

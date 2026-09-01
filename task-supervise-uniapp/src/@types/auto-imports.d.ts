@@ -121,6 +121,7 @@ declare global {
   const onUnmounted: typeof import('vue').onUnmounted
   const onUpdated: typeof import('vue').onUpdated
   const onWatcherCleanup: typeof import('vue').onWatcherCleanup
+  const orgApi: typeof import('../api/org').orgApi
   const provide: typeof import('vue').provide
   const qrChangeSate: typeof import('../api/qrAuth')['qrChangeSate']
   const qrLogin: typeof import('../api/qrAuth')['qrLogin']
@@ -146,9 +147,10 @@ declare global {
   const store: typeof import('../store/index').default
   const storeToRefs: typeof import('pinia').storeToRefs
   const tagFindAll: typeof import('../api/tag')['tagFindAll']
-  const task: typeof import('../store/task').default
+  const task: typeof import('../api/task').default
   const taskApi: typeof import('../api/task').taskApi
   const taskAssigneeApi: typeof import('../api/task').taskAssigneeApi
+  const taskStore: typeof import('../store/taskStore').default
   const test: typeof import('../store/test')['default']
   const to: typeof import('@iceywu/utils').to
   const toPro: typeof import('@iceywu/utils').toPro
@@ -199,7 +201,7 @@ declare global {
   const useStorage: typeof import('@uni-helper/uni-use').useStorage
   const useStorageAsync: typeof import('@uni-helper/uni-use').useStorageAsync
   const useStorageSync: typeof import('@uni-helper/uni-use').useStorageSync
-  const useTaskStore: typeof import('../store/task').useTaskStore
+  const useTaskStore: typeof import('../store/taskStore').useTaskStore
   const useTemplateRef: typeof import('vue').useTemplateRef
   const useTheme: typeof import('../composables/useTheme').useTheme
   const useTitle: typeof import('../hooks/useTitle').useTitle
@@ -225,11 +227,14 @@ declare global {
   export type { LoginParams, RegisterParams, LoginResult, UserInfo } from '../api/auth'
   import('../api/auth')
   // @ts-ignore
-  export type { ProgressFeedback, TaskFile, AddFeedbackParams } from '../api/feedback'
+  export type { ProgressFeedback, TaskFile, AddFeedbackParams, AssigneeProgress } from '../api/feedback'
   import('../api/feedback')
   // @ts-ignore
   export type { InAppMessage } from '../api/message'
   import('../api/message')
+  // @ts-ignore
+  export type { OrgUser } from '../api/org'
+  import('../api/org')
   // @ts-ignore
   export type { TaskStatus, TaskPriority, AssigneeMode, Task, TaskListParams, TaskListResult, CreateTaskParams, UpdateTaskParams, TaskTemplate, TaskAssignee } from '../api/task'
   import('../api/task')
@@ -339,6 +344,7 @@ declare module 'vue' {
     readonly onUnmounted: UnwrapRef<typeof import('vue')['onUnmounted']>
     readonly onUpdated: UnwrapRef<typeof import('vue')['onUpdated']>
     readonly onWatcherCleanup: UnwrapRef<typeof import('vue')['onWatcherCleanup']>
+    readonly orgApi: UnwrapRef<typeof import('../api/org')['orgApi']>
     readonly provide: UnwrapRef<typeof import('vue')['provide']>
     readonly reactive: UnwrapRef<typeof import('vue')['reactive']>
     readonly readonly: UnwrapRef<typeof import('vue')['readonly']>
@@ -357,9 +363,10 @@ declare module 'vue' {
     readonly sleep: UnwrapRef<typeof import('@iceywu/utils')['sleep']>
     readonly store: UnwrapRef<typeof import('../store/index')['default']>
     readonly storeToRefs: UnwrapRef<typeof import('pinia')['storeToRefs']>
-    readonly task: UnwrapRef<typeof import('../store/task')['default']>
+    readonly task: UnwrapRef<typeof import('../api/task')['default']>
     readonly taskApi: UnwrapRef<typeof import('../api/task')['taskApi']>
     readonly taskAssigneeApi: UnwrapRef<typeof import('../api/task')['taskAssigneeApi']>
+    readonly taskStore: UnwrapRef<typeof import('../store/taskStore')['default']>
     readonly to: UnwrapRef<typeof import('@iceywu/utils')['to']>
     readonly toPro: UnwrapRef<typeof import('@iceywu/utils')['toPro']>
     readonly toRaw: UnwrapRef<typeof import('vue')['toRaw']>
@@ -380,7 +387,7 @@ declare module 'vue' {
     readonly usePage: UnwrapRef<typeof import('../hooks/usePage')['usePage']>
     readonly useRequest: UnwrapRef<typeof import('vue-hooks-pure')['useRequest']>
     readonly useSlots: UnwrapRef<typeof import('vue')['useSlots']>
-    readonly useTaskStore: UnwrapRef<typeof import('../store/task')['useTaskStore']>
+    readonly useTaskStore: UnwrapRef<typeof import('../store/taskStore')['useTaskStore']>
     readonly useTemplateRef: UnwrapRef<typeof import('vue')['useTemplateRef']>
     readonly useTheme: UnwrapRef<typeof import('../composables/useTheme')['useTheme']>
     readonly useUserStore: UnwrapRef<typeof import('../store/user')['useUserStore']>

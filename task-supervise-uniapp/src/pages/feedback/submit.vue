@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-  import { feedbackApi, fileApi } from '~/api/feedback'
+  import { feedbackApi } from '~/api/feedback'
   import apiServer from '@/config/domain'
+  import { getToken } from '@/utils/http/auth'
 
   definePage(() => ({
     layout: 'default',
@@ -38,58 +39,17 @@
     }
   }
 
-  /** 选择文件（跨平台兼容） */
-  async function chooseFile() {
-    // #ifdef MP-WEIXIN
-    uni.chooseMessageFile({
-      count: 9,
-      type: 'file',
-      success: async (res) => {
-        const files = res.tempFiles
-        for (const file of files) {
-          await uploadFileWx(file.path, file.name)
-        }
-      },
-    })
-    // #endif
-    // #ifdef H5
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.multiple = true
-    input.accept = '.doc,.docx,.xls,.xlsx,.pdf,.txt,.ppt,.pptx,.zip,.rar'
-    input.onchange = async (e: Event) => {
-      const target = e.target as HTMLInputElement
-      const files = target.files
-      if (files) {
-        for (let i = 0; i < files.length; i++) {
-          await uploadFileH5(files[i])
-        }
-      }
-    }
-    input.click()
-    // #endif
-  }
-
-  /** H5 上传文件（File 对象，走 fetch + FormData） */
-  async function uploadFileH5(file: File) {
+  /** H5 上传（Fetch API，保留原始文件名） */
+  async function doUploadH5(file: File) {
     uploading.value = true
     try {
-      // 从 cookie 中读取 token（和 http 拦截器一致）
-      const tokenStr = document.cookie.split(';').find(c => c.trim().startsWith('authorized-token='))
-      let token = ''
-      if (tokenStr) {
-        try {
-          const parsed = JSON.parse(tokenStr.split('=').slice(1).join('='))
-          token = parsed.accessToken || ''
-        } catch {}
-      }
+      const accessToken = getToken()?.accessToken || ''
       const formData = new FormData()
       formData.append('file', file)
       formData.append('taskId', String(taskId.value))
-
       const res = await fetch(`${apiServer.baseServer}/file/upload`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         body: formData,
       })
       const json = await res.json()
@@ -98,7 +58,7 @@
         uploadedFiles.value.push(result)
         uni.showToast({ icon: 'success', title: '上传成功' })
       } else {
-        uni.showToast({ icon: 'none', title: json?.message || '上传失败' })
+        uni.showToast({ icon: 'none', title: '上传失败' })
       }
     } catch (error) {
       console.error('上传失败:', error)
@@ -108,22 +68,24 @@
     }
   }
 
-  /** 微信小程序上传文件（tempFilePath，走 uni.uploadFile） */
-  function uploadFileWx(filePath: string, fileName: string) {
+  /** 微信小程序上传（uni.uploadFile） */
+  function doUploadWx(filePath: string) {
     uploading.value = true
-    const token = uni.getStorageSync('accessToken') || ''
+    const accessToken = getToken()?.accessToken || ''
     uni.uploadFile({
-      url: `${apiServer.baseServer}/api/v1/file/upload`,
+      url: `${apiServer.baseServer}/file/upload`,
       filePath,
       name: 'file',
       formData: { taskId: String(taskId.value) },
-      header: { Authorization: `Bearer ${token}` },
+      header: { Authorization: `Bearer ${accessToken}` },
       success: (res) => {
         const data = JSON.parse(res.data)
         const result = data?.data || data
         if (result && result.fileId) {
           uploadedFiles.value.push(result)
           uni.showToast({ icon: 'success', title: '上传成功' })
+        } else {
+          uni.showToast({ icon: 'none', title: '上传失败' })
         }
       },
       fail: () => {
@@ -135,19 +97,50 @@
     })
   }
 
+  /** 选择文件（跨平台兼容） */
+  function chooseFile() {
+    // #ifdef MP-WEIXIN
+    uni.chooseMessageFile({
+      count: 9,
+      type: 'file',
+      success: (res) => {
+        for (const file of res.tempFiles) {
+          doUploadWx(file.path)
+        }
+      },
+    })
+    // #endif
+    // #ifdef H5
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.multiple = true
+    input.accept = '.doc,.docx,.xls,.xlsx,.pdf,.txt,.ppt,.pptx,.zip,.rar'
+    input.onchange = (e: Event) => {
+      const target = e.target as HTMLInputElement
+      const files = target.files
+      if (files) {
+        for (let i = 0; i < files.length; i++) {
+          doUploadH5(files[i])
+        }
+      }
+    }
+    input.click()
+    // #endif
+  }
+
   /** 选择图片（跨平台兼容） */
-  async function chooseImage() {
+  function chooseImage() {
     // #ifdef H5
     const input = document.createElement('input')
     input.type = 'file'
     input.multiple = true
     input.accept = 'image/*'
-    input.onchange = async (e: Event) => {
+    input.onchange = (e: Event) => {
       const target = e.target as HTMLInputElement
       const files = target.files
       if (files) {
         for (let i = 0; i < files.length; i++) {
-          await uploadFileH5(files[i])
+          doUploadH5(files[i])
         }
       }
     }
@@ -158,10 +151,9 @@
       count: 9,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
-      success: async (res) => {
+      success: (res) => {
         for (const path of res.tempFilePaths) {
-          const name = path.split('/').pop() || 'image.jpg'
-          await uploadFileWx(path, name)
+          doUploadWx(path)
         }
       },
     })

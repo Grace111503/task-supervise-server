@@ -78,8 +78,9 @@ public class TaskController {
     /**
      * 更新任务
      */
-    @PutMapping
-    public Result<Task> update(@RequestBody Task task) {
+    @PutMapping("/{taskId}")
+    public Result<Task> update(@PathVariable Long taskId, @RequestBody Task task) {
+        task.setId(taskId);
         return Result.success(taskService.update(task));
     }
 

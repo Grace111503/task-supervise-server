@@ -3,7 +3,8 @@
   import { taskApi } from '~/api/task'
   import { messageApi } from '~/api/message'
   import { useUserStore } from '~/store/user'
-
+  import type { OrgUser } from '~/api/org'
+  import { getToken } from '~/utils/http/auth'
   definePage(() => ({
     layout: 'home',
   }))
@@ -17,6 +18,18 @@
   const activeTab = ref<string>('all')
   const stats = ref({ total: 0, pendingReceive: 0, inProgress: 0, pendingFeedback: 0, pendingAccept: 0, completed: 0, overdue: 0 })
   const unreadCount = ref(0)
+
+  // 批量操作相关
+  const isMultiSelect = ref(false)
+  const selectedTasks = ref<number[]>([])
+  const showAssigneePicker = ref(false)
+
+  const selectAll = computed({
+    get: () => selectedTasks.value.length === taskList.value.length && taskList.value.length > 0,
+    set: (val: boolean) => {
+      selectedTasks.value = val ? taskList.value.map(t => t.id) : []
+    },
+  })
 
   // 六状态筛选项
   const tabs: Array<{ key: string; label: string }> = [
@@ -117,6 +130,10 @@
   }
 
   function goDetail(task: Task) {
+    if (isMultiSelect.value) {
+      toggleTask(task.id)
+      return
+    }
     uni.navigateTo({ url: `/pages/home/detail?id=${task.id}` })
   }
 
@@ -142,9 +159,9 @@
     })
   }
 
-  async function handleStatusChange(task: Task, status: string) {
+  async function handleStatusChange(task: Task, status: TaskStatus) {
     try {
-      await taskApi.updateStatus(task.id, status as TaskStatus)
+      await taskApi.updateStatus(task.id, status)
       const index = taskList.value.findIndex((t) => t.id === task.id)
       if (index !== -1) {
         taskList.value[index].status = status as TaskStatus
@@ -157,6 +174,140 @@
 
   function goCreate() {
     uni.navigateTo({ url: '/pages/home/edit' })
+  }
+
+  /** 切换批量选择模式 */
+  function toggleSelect() {
+    isMultiSelect.value = !isMultiSelect.value
+    if (!isMultiSelect.value) selectedTasks.value = []
+  }
+
+  /** 切换单个任务选中 */
+  function toggleTask(taskId: number) {
+    const index = selectedTasks.value.indexOf(taskId)
+    if (index === -1) {
+      selectedTasks.value.push(taskId)
+    } else {
+      selectedTasks.value.splice(index, 1)
+    }
+  }
+
+  /** 批量分派确认 */
+  function onBatchAssignConfirm(users: OrgUser[]) {
+    if (!users.length || selectedTasks.value.length === 0) return
+    showAssigneePicker.value = false
+
+    uni.showModal({
+      title: '批量分派',
+      content: `确定将 ${selectedTasks.value.length} 个任务分派给 ${users[0].name} 吗？`,
+      success: async (res) => {
+        if (res.confirm) {
+          try {
+            await taskApi.batchAssign(selectedTasks.value, users[0].userId)
+            uni.showToast({ icon: 'success', title: '分派成功' })
+            selectedTasks.value = []
+            isMultiSelect.value = false
+            loadTasks(true)
+            loadStats()
+          } catch (error) {
+            uni.showToast({ icon: 'none', title: '分派失败' })
+          }
+        }
+      },
+    })
+  }
+
+  /** Excel 批量导入 */
+  function handleExcelImport() {
+    // #ifdef H5
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.xlsx,.xls'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+
+      uni.showLoading({ title: '导入中...' })
+      try {
+        const tokenData = getToken()
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await fetch('http://localhost:8082/api/v1/task/batch-import', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${tokenData?.accessToken || ''}` },
+          body: formData,
+        })
+        const result = await response.json()
+        if (result.code === 200 || result.code === 0) {
+          const data = result.data || {}
+          uni.showToast({ icon: 'success', title: `成功${data.success || 0}条，失败${data.fail || 0}条` })
+        } else {
+          uni.showToast({ icon: 'none', title: result.message || '导入失败' })
+        }
+        loadTasks(true)
+        loadStats()
+      } catch (error: any) {
+        uni.showToast({ icon: 'none', title: error.message || '导入失败' })
+      } finally {
+        uni.hideLoading()
+      }
+    }
+    input.click()
+    // #endif
+    // #ifndef H5
+    uni.chooseFile({
+      type: 'all' as any,
+      extension: ['.xlsx', '.xls'],
+      success: async (res) => {
+        const file = (res as any).tempFiles?.[0] || (res as any).tempFilePaths?.[0]
+        if (!file) return
+
+        uni.showLoading({ title: '导入中...' })
+        try {
+          const formData = new FormData()
+          formData.append('file', file as any)
+
+          // 使用 uni.uploadFile 上传
+          const tokenData = getToken()
+          await new Promise<void>((resolve, reject) => {
+            uni.uploadFile({
+              url: 'http://localhost:8082/api/v1/task/batch-import',
+              filePath: file.path || (file as any).url,
+              name: 'file',
+              header: {
+                Authorization: `Bearer ${tokenData?.accessToken || ''}`,
+              },
+              success: (uploadRes) => {
+                if (uploadRes.statusCode === 200) {
+                  const data = JSON.parse(uploadRes.data)
+                  if (data.code === 200 || data.code === 0) {
+                    const result = data.data || {}
+                    uni.showToast({
+                      icon: 'success',
+                      title: `成功${result.success || 0}条，失败${result.fail || 0}条`,
+                    })
+                    resolve()
+                  } else {
+                    reject(new Error(data.message || '导入失败'))
+                  }
+                } else {
+                  reject(new Error('上传失败'))
+                }
+              },
+              fail: (err) => reject(err),
+            })
+          })
+
+          loadTasks(true)
+          loadStats()
+        } catch (error: any) {
+          uni.showToast({ icon: 'none', title: error.message || '导入失败' })
+        } finally {
+          uni.hideLoading()
+        }
+      },
+    })
+    // #endif
   }
 
   function goMessage() {
@@ -312,6 +463,34 @@
       </scroll-view>
     </view>
 
+    <!-- 批量操作工具栏（管理权限可见） -->
+    <view class="batch-bar" v-if="userStore.hasManagePermission && taskList.length > 0">
+      <view class="batch-bar-left" v-if="isMultiSelect">
+        <view class="select-all" @click="selectAll = !selectAll">
+          <view class="checkbox" :class="{ checked: selectAll }">
+            <text v-if="selectAll" class="check-mark">✓</text>
+          </view>
+          <text>全选 ({{ selectedTasks.length }}/{{ taskList.length }})</text>
+        </view>
+      </view>
+      <view class="batch-bar-right">
+        <view class="batch-toggle" @click="toggleSelect">
+          {{ isMultiSelect ? '取消' : '批量选择' }}
+        </view>
+        <view class="batch-import-btn" @click="handleExcelImport" v-if="!isMultiSelect">
+          📥 Excel导入
+        </view>
+      </view>
+    </view>
+
+    <!-- 批量分派操作栏 -->
+    <view class="batch-assign-bar" v-if="isMultiSelect && selectedTasks.length > 0">
+      <view class="batch-assign-btn" @click="showAssigneePicker = true">
+        <text class="batch-assign-icon">👤</text>
+        <text>批量分派 ({{ selectedTasks.length }})</text>
+      </view>
+    </view>
+
     <!-- 任务列表 -->
     <scroll-view
       class="task-list"
@@ -329,16 +508,31 @@
       />
 
       <view class="task-items" v-else>
-        <TaskCard
-          show-actions
+        <view
+          class="task-item-wrapper"
           v-for="item in taskList"
           :key="item.id"
-          :task="item"
-          @click="goDetail(item)"
-          @delete="handleDelete(item)"
-          @edit="goEdit(item)"
-          @status-change="handleStatusChange(item, $event)"
-        />
+        >
+          <view
+            class="batch-checkbox"
+            v-if="isMultiSelect"
+            @click.stop="toggleTask(item.id)"
+          >
+            <view class="checkbox" :class="{ checked: selectedTasks.includes(item.id) }">
+              <text v-if="selectedTasks.includes(item.id)" class="check-mark">✓</text>
+            </view>
+          </view>
+
+          <TaskCard
+            show-actions
+            :task="item"
+            :class="{ 'batch-selected': isMultiSelect && selectedTasks.includes(item.id) }"
+            @click="goDetail(item)"
+            @delete="handleDelete(item)"
+            @edit="goEdit(item)"
+            @status-change="(t, s) => handleStatusChange(t, s)"
+          />
+        </view>
 
         <view class="loading-more" v-if="loading">
           <wd-loading size="24px">加载中...</wd-loading>
@@ -347,9 +541,16 @@
     </scroll-view>
 
     <!-- 新建按钮：仅主管和管理员可见 -->
-    <view class="fab-button" v-if="userStore.hasManagePermission" @click="goCreate">
+    <view class="fab-button" v-if="userStore.hasManagePermission && !isMultiSelect" @click="goCreate">
       <text class="fab-icon">+</text>
     </view>
+
+    <!-- 执行人选择弹窗 -->
+    <AssigneePicker
+      :visible="showAssigneePicker"
+      @confirm="onBatchAssignConfirm"
+      @close="showAssigneePicker = false"
+    />
   </view>
 </template>
 
@@ -582,6 +783,95 @@
     }
   }
 
+  .batch-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--wot-filled-oppo, #ffffff);
+    padding: 16rpx 24rpx;
+    border-bottom: 1rpx solid var(--wot-border-color, #e5e6eb);
+  }
+
+  .batch-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+  }
+
+  .batch-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+  }
+
+  .select-all {
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    font-size: 26rpx;
+    color: var(--wot-text-main, #1d2129);
+  }
+
+  .checkbox {
+    width: 36rpx;
+    height: 36rpx;
+    border: 2rpx solid var(--wot-border-color, #e5e6eb);
+    border-radius: 8rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--wot-filled-oppo, #ffffff);
+
+    &.checked {
+      background-color: #07c160;
+      border-color: #07c160;
+    }
+  }
+
+  .check-mark {
+    font-size: 22rpx;
+    color: #ffffff;
+  }
+
+  .batch-toggle {
+    font-size: 26rpx;
+    color: #07c160;
+    font-weight: 500;
+    padding: 8rpx 16rpx;
+  }
+
+  .batch-import-btn {
+    font-size: 24rpx;
+    color: #1890ff;
+    font-weight: 500;
+    padding: 8rpx 16rpx;
+    background-color: #e6f7ff;
+    border-radius: 8rpx;
+  }
+
+  .batch-assign-bar {
+    background-color: var(--wot-filled-oppo, #ffffff);
+    padding: 16rpx 24rpx;
+    border-bottom: 1rpx solid var(--wot-border-color, #e5e6eb);
+  }
+
+  .batch-assign-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12rpx;
+    padding: 20rpx 0;
+    background-color: #07c160;
+    border-radius: 12rpx;
+    font-size: 28rpx;
+    color: #ffffff;
+    font-weight: 500;
+  }
+
+  .batch-assign-icon {
+    font-size: 32rpx;
+  }
+
   .task-list {
     flex: 1;
     overflow: hidden;
@@ -589,6 +879,25 @@
 
   .task-items {
     padding: 24rpx;
+  }
+
+  .task-item-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 16rpx;
+  }
+
+  .batch-checkbox {
+    flex-shrink: 0;
+    padding-top: 30rpx;
+  }
+
+  .task-item-wrapper :deep(.task-card) {
+    flex: 1;
+  }
+
+  .batch-selected {
+    border: 2rpx solid #07c160;
   }
 
   .loading-more {

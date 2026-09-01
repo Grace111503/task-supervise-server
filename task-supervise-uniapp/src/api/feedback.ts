@@ -1,4 +1,6 @@
 import http from '@/utils/http'
+import apiServer from '@/config/domain'
+import { getToken } from '@/utils/http/auth'
 
 /** 进度反馈信息 */
 export interface ProgressFeedback {
@@ -38,6 +40,17 @@ export interface AddFeedbackParams {
   fileIds?: number[]
 }
 
+/** 执行人进度概览 */
+export interface AssigneeProgress {
+  userId: number
+  userName: string
+  assigneeType: number
+  latestProgress: number
+  stage: number
+  latestContent?: string
+  latestTime?: string
+}
+
 /** 进度反馈 API */
 export const feedbackApi = {
   /** 按任务ID查询反馈列表（含文件） */
@@ -67,6 +80,10 @@ export const feedbackApi = {
   /** 获取任务的下一个阶段号 */
   getNextStage: (taskId: number) =>
     http.get<{ stage: number }>(`/feedback/progress/task/${taskId}/next-stage`),
+
+  /** 查询多人任务各执行人的进度概览 */
+  getAssigneeProgress: (taskId: number) =>
+    http.get<AssigneeProgress[]>(`/feedback/progress/task/${taskId}/assignee-progress`),
 }
 
 /** 文件 API */
@@ -95,11 +112,17 @@ export const fileApi = {
   listByFeedbackId: (feedbackId: number) =>
     http.get<TaskFile[]>(`/file/feedback/${feedbackId}`),
 
-  /** 获取文件下载URL */
-  getDownloadUrl: (fileId: number) => `/api/v1/file/download/${fileId}`,
+  /** 获取文件下载URL（带 token，用于 window.open / 浏览器直接访问） */
+  getDownloadUrl: (fileId: number) => {
+    const token = getToken()?.accessToken || ''
+    return `${(apiServer as any).baseServer}/file/download/${fileId}?token=Bearer ${encodeURIComponent(token)}`
+  },
 
-  /** 获取文件预览URL */
-  getPreviewUrl: (fileId: number) => `/api/v1/file/preview/${fileId}`,
+  /** 获取文件预览URL（带 token，用于 window.open / 浏览器直接访问） */
+  getPreviewUrl: (fileId: number) => {
+    const token = getToken()?.accessToken || ''
+    return `${(apiServer as any).baseServer}/file/preview/${fileId}?token=Bearer ${encodeURIComponent(token)}`
+  },
 
   /** 删除文件 */
   delete: (fileId: number) =>
