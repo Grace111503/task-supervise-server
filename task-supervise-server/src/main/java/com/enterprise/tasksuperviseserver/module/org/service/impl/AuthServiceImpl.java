@@ -126,8 +126,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private LoginResultVO buildSuccessLogin(SysUser user) {
-        String accessToken = jwtUtil.generateAccessToken(user.getUserId(), user.getUserName(), user.getRoleCode());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUserName(), user.getRoleCode());
+        // 使用真实姓名（name）而非登录用户名（userName）
+        String displayName = user.getName() != null ? user.getName() : user.getUserName();
+        String accessToken = jwtUtil.generateAccessToken(user.getUserId(), user.getUserName(), displayName, user.getRoleCode());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getUserName(), displayName, user.getRoleCode());
 
         // 三级权限角色描述
         String roleDesc = switch (user.getRoleCode()) {
@@ -139,7 +141,7 @@ public class AuthServiceImpl implements AuthService {
 
         LoginAdminVO admin = LoginAdminVO.builder()
                 .id(user.getUserId())
-                .name(user.getUserName())
+                .name(displayName)
                 .avatar(user.getAvatar())
                 .role(user.getRoleCode())
                 .roleDesc(roleDesc)

@@ -68,7 +68,7 @@ public class OperationLogServiceImpl implements OperationLogService {
     public OperationLog create(OperationLog entity) {
         entity.setLogId(null);
         entity.setOperatorId(UserContext.getUserId());
-        entity.setOperatorName(UserContext.getUsername());
+        entity.setOperatorName(UserContext.getName() != null ? UserContext.getName() : UserContext.getUsername());
         entity.setOperateTime(LocalDateTime.now());
         operationLogMapper.insert(entity);
         return entity;

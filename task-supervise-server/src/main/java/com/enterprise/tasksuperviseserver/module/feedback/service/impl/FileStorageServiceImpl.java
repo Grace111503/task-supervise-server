@@ -129,7 +129,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         taskFile.setFileType(extension.toUpperCase());
         taskFile.setFileSize(file.getSize());
         taskFile.setUploaderId(UserContext.getUserId());
-        taskFile.setUploaderName(UserContext.getUsername());
+        taskFile.setUploaderName(UserContext.getName() != null ? UserContext.getName() : UserContext.getUsername());
         taskFile.setUploadTime(LocalDateTime.now());
         taskFileMapper.insert(taskFile);
 

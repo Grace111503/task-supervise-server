@@ -84,9 +84,11 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         Long userId = ((Number) uidObj).longValue();
         String username = (String) claims.get(JwtUtil.CLAIM_USERNAME);
+        String name = (String) claims.get(JwtUtil.CLAIM_NAME);
         String role = (String) claims.get(JwtUtil.CLAIM_ROLE);
         UserContext.setUserId(userId);
         UserContext.setUsername(username);
+        UserContext.setName(name);
         UserContext.setRole(role);
         // 加载用户部门信息
         try {

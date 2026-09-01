@@ -11,6 +11,7 @@ public class UserContext {
 
     private static final ThreadLocal<Long> USER_ID_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<String> USERNAME_HOLDER = new ThreadLocal<>();
+    private static final ThreadLocal<String> NAME_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<String> ROLE_HOLDER = new ThreadLocal<>();
     private static final ThreadLocal<Long> DEPT_ID_HOLDER = new ThreadLocal<>();
 
@@ -28,6 +29,14 @@ public class UserContext {
 
     public static String getUsername() {
         return USERNAME_HOLDER.get();
+    }
+
+    public static void setName(String name) {
+        NAME_HOLDER.set(name);
+    }
+
+    public static String getName() {
+        return NAME_HOLDER.get();
     }
 
     public static void setRole(String role) {
@@ -49,6 +58,7 @@ public class UserContext {
     public static void clear() {
         USER_ID_HOLDER.remove();
         USERNAME_HOLDER.remove();
+        NAME_HOLDER.remove();
         ROLE_HOLDER.remove();
         DEPT_ID_HOLDER.remove();
     }

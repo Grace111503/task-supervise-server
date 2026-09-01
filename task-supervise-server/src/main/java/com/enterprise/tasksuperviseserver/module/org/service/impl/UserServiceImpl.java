@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(404, "用户不存在");
         }
         if (StringUtils.hasText(dto.getName())) {
-            user.setUserName(dto.getName());
+            user.setName(dto.getName());
         }
         if (dto.getEmail() != null) {
             user.setEmail(dto.getEmail());
@@ -99,7 +99,7 @@ public class UserServiceImpl implements UserService {
     private UserInfoVO convert(SysUser user) {
         return UserInfoVO.builder()
                 .id(user.getUserId())
-                .name(user.getUserName())
+                .name(user.getName() != null ? user.getName() : user.getUserName())
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .avatar(user.getAvatar())

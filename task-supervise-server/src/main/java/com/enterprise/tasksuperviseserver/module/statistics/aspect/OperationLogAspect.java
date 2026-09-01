@@ -81,7 +81,7 @@ public class OperationLogAspect {
         operationLog.setAction(logOperation.action());
         operationLog.setTaskId(taskId);
         operationLog.setOperatorId(UserContext.getUserId());
-        operationLog.setOperatorName(UserContext.getUsername());
+        operationLog.setOperatorName(UserContext.getName() != null ? UserContext.getName() : UserContext.getUsername());
         operationLog.setDeptId(deptId);
         operationLog.setDetail(detail);
         operationLog.setEncryptedContent(hash);

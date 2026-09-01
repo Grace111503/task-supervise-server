@@ -67,7 +67,8 @@ public class ProgressFeedbackServiceImpl implements ProgressFeedbackService {
     @Override
     public ProgressFeedback add(ProgressFeedback feedback) {
         Long userId = UserContext.getUserId();
-        String username = UserContext.getUsername();
+        // 优先使用真实姓名，回退到登录用户名
+        String username = UserContext.getName() != null ? UserContext.getName() : UserContext.getUsername();
 
         // 权限检查：只有执行人（非创建人）可以提交反馈
         Task taskForCheck = taskMapper.selectById(feedback.getTaskId());

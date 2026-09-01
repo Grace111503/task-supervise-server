@@ -65,7 +65,7 @@ public class AcceptanceServiceImpl implements AcceptanceService {
     public Acceptance add(Acceptance acceptance) {
         Long userId = UserContext.getUserId();
         acceptance.setApplicantId(userId);
-        acceptance.setApplicantName(UserContext.getUsername());
+        acceptance.setApplicantName(UserContext.getName() != null ? UserContext.getName() : UserContext.getUsername());
         acceptance.setApplyTime(LocalDateTime.now());
         acceptance.setResult(TaskConstant.ACCEPT_RESULT_PENDING);
         acceptanceMapper.insert(acceptance);

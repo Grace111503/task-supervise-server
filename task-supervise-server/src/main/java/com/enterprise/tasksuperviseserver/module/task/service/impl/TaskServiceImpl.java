@@ -13,6 +13,8 @@ import com.enterprise.tasksuperviseserver.module.task.mapper.TaskMapper;
 import com.enterprise.tasksuperviseserver.module.task.service.TaskCacheService;
 import com.enterprise.tasksuperviseserver.module.task.service.TaskService;
 import com.enterprise.tasksuperviseserver.module.task.service.TaskTemplateService;
+import com.enterprise.tasksuperviseserver.module.org.entity.SysUser;
+import com.enterprise.tasksuperviseserver.module.org.mapper.SysUserMapper;
 import com.enterprise.tasksuperviseserver.module.task.vo.TaskListItemVO;
 import com.enterprise.tasksuperviseserver.module.feedback.entity.ProgressFeedback;
 import com.enterprise.tasksuperviseserver.module.feedback.mapper.ProgressFeedbackMapper;
@@ -51,6 +53,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskCacheService taskCacheService;
     private final TaskTemplateService taskTemplateService;
     private final ProgressFeedbackMapper progressFeedbackMapper;
+    private final SysUserMapper sysUserMapper;
 
     /** 状态映射：前端整数 → 数据库字符串 */
     private static final Map<Integer, String> STATUS_MAP = Map.of(
@@ -181,7 +184,9 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public Task create(Task task) {
         Long creatorId = UserContext.getUserId();
+        String creatorName = UserContext.getName() != null ? UserContext.getName() : UserContext.getUsername();
         task.setCreatorId(creatorId);
+        task.setCreatorName(creatorName);
         if (task.getStatus() == null) {
             task.setStatus("pending");
         }
@@ -202,14 +207,36 @@ public class TaskServiceImpl implements TaskService {
         log.info("[create] title={}, assigneeMode={}, isMultiMode={}, assigneeIds={}, primaryId={}",
                 task.getTitle(), task.getAssigneeMode(), isMultiMode, assigneeIds, primaryId);
 
+        // 单人模式：自动填充执行人姓名
+        if (!isMultiMode && task.getAssigneeId() != null) {
+            SysUser assigneeUser = sysUserMapper.selectById(task.getAssigneeId());
+            if (assigneeUser != null) {
+                String aName = assigneeUser.getName() != null ? assigneeUser.getName() : assigneeUser.getUserName();
+                task.setAssigneeName(aName);
+            }
+        }
+
         taskMapper.insert(task);
 
         // 多人协办：在同一个事务中写入 task_assignee 记录
         if (isMultiMode && assigneeIds != null && !assigneeIds.isEmpty()) {
+            // 批量查询执行人信息
+            Map<Long, SysUser> userMap = new HashMap<>();
+            for (Long uid : assigneeIds) {
+                SysUser u = sysUserMapper.selectById(uid);
+                if (u != null) userMap.put(uid, u);
+            }
+
             for (Long userId : assigneeIds) {
                 TaskAssignee assignee = new TaskAssignee();
                 assignee.setTaskId(task.getId());
                 assignee.setUserId(userId);
+                // 设置执行人真实姓名
+                SysUser assigneeUser = userMap.get(userId);
+                if (assigneeUser != null) {
+                    String aName = assigneeUser.getName() != null ? assigneeUser.getName() : assigneeUser.getUserName();
+                    assignee.setAssigneeName(aName);
+                }
                 if (primaryId != null && primaryId.equals(userId)) {
                     assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
                 } else if (primaryId == null && userId.equals(assigneeIds.get(0))) {
@@ -345,9 +372,17 @@ public class TaskServiceImpl implements TaskService {
         if (task == null) {
             throw new BusinessException(404, "任务不存在");
         }
+        // 查询执行人真实姓名
+        SysUser assigneeUser = sysUserMapper.selectById(assigneeId);
+        String assigneeName = null;
+        if (assigneeUser != null) {
+            assigneeName = assigneeUser.getName() != null ? assigneeUser.getName() : assigneeUser.getUserName();
+        }
+
         TaskAssignee assignee = new TaskAssignee();
         assignee.setTaskId(taskId);
         assignee.setUserId(assigneeId);
+        assignee.setAssigneeName(assigneeName);
         assignee.setStatus("pending");
         assignee.setCreatedAt(LocalDateTime.now());
         taskAssigneeMapper.insert(assignee);
@@ -563,6 +598,13 @@ public class TaskServiceImpl implements TaskService {
             throw new BusinessException("被指派人ID不能为空");
         }
 
+        // 查询执行人真实姓名
+        SysUser assigneeUser = sysUserMapper.selectById(assigneeId);
+        String assigneeName = null;
+        if (assigneeUser != null) {
+            assigneeName = assigneeUser.getName() != null ? assigneeUser.getName() : assigneeUser.getUserName();
+        }
+
         for (Long taskId : taskIds) {
             Task task = taskMapper.selectById(taskId);
             if (task == null) {
@@ -571,6 +613,7 @@ public class TaskServiceImpl implements TaskService {
             TaskAssignee assignee = new TaskAssignee();
             assignee.setTaskId(taskId);
             assignee.setUserId(assigneeId);
+            assignee.setAssigneeName(assigneeName);
             assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
             assignee.setStatus("pending");
             assignee.setCreatedAt(LocalDateTime.now());
@@ -605,11 +648,24 @@ public class TaskServiceImpl implements TaskService {
         task.setUpdatedAt(LocalDateTime.now());
         taskMapper.updateById(task);
 
+        // 批量查询执行人信息
+        Map<Long, SysUser> userMap = new HashMap<>();
+        for (Long uid : assigneeIds) {
+            SysUser u = sysUserMapper.selectById(uid);
+            if (u != null) userMap.put(uid, u);
+        }
+
         // 批量添加指派人
         for (Long userId : assigneeIds) {
             TaskAssignee assignee = new TaskAssignee();
             assignee.setTaskId(taskId);
             assignee.setUserId(userId);
+            // 设置执行人真实姓名
+            SysUser assigneeUser = userMap.get(userId);
+            if (assigneeUser != null) {
+                String aName = assigneeUser.getName() != null ? assigneeUser.getName() : assigneeUser.getUserName();
+                assignee.setAssigneeName(aName);
+            }
             // 如果指定了主负责人，或者是指派人列表的第一个，则为主负责人
             if (primaryId != null && primaryId.equals(userId)) {
                 assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
@@ -643,6 +699,13 @@ public class TaskServiceImpl implements TaskService {
         int success = 0;
         int fail = 0;
 
+        // 查询执行人真实姓名
+        SysUser assigneeUser = sysUserMapper.selectById(assigneeId);
+        String assigneeName = null;
+        if (assigneeUser != null) {
+            assigneeName = assigneeUser.getName() != null ? assigneeUser.getName() : assigneeUser.getUserName();
+        }
+
         for (Long taskId : taskIds) {
             try {
                 Task task = taskMapper.selectById(taskId);
@@ -653,6 +716,7 @@ public class TaskServiceImpl implements TaskService {
                 TaskAssignee assignee = new TaskAssignee();
                 assignee.setTaskId(taskId);
                 assignee.setUserId(assigneeId);
+                assignee.setAssigneeName(assigneeName);
                 assignee.setAssigneeType(TaskConstant.ASSIGNEE_TYPE_PRIMARY);
                 assignee.setStatus("pending");
                 assignee.setCreatedAt(LocalDateTime.now());

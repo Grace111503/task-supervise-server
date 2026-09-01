@@ -31,6 +31,8 @@ public class JwtUtil {
     public static final String CLAIM_USER_ID = "uid";
     /** 声明中的用户名字段 */
     public static final String CLAIM_USERNAME = "username";
+    /** 声明中的真实姓名字段 */
+    public static final String CLAIM_NAME = "name";
     /** 声明中的角色字段 */
     public static final String CLAIM_ROLE = "role";
     /** token 类型: access / refresh */
@@ -46,24 +48,25 @@ public class JwtUtil {
     /**
      * 生成 Access Token
      */
-    public String generateAccessToken(Long userId, String username, String role) {
-        return buildToken(userId, username, role, "access", jwtProperties.getAccessExpire());
+    public String generateAccessToken(Long userId, String username, String name, String role) {
+        return buildToken(userId, username, name, role, "access", jwtProperties.getAccessExpire());
     }
 
     /**
      * 生成 Refresh Token
      */
-    public String generateRefreshToken(Long userId, String username, String role) {
-        return buildToken(userId, username, role, "refresh", jwtProperties.getRefreshExpire());
+    public String generateRefreshToken(Long userId, String username, String name, String role) {
+        return buildToken(userId, username, name, role, "refresh", jwtProperties.getRefreshExpire());
     }
 
     /**
      * 构建 Token
      */
-    private String buildToken(Long userId, String username, String role, String type, long expireSeconds) {
-        Map<String, Object> claims = new HashMap<>(4);
+    private String buildToken(Long userId, String username, String name, String role, String type, long expireSeconds) {
+        Map<String, Object> claims = new HashMap<>(5);
         claims.put(CLAIM_USER_ID, userId);
         claims.put(CLAIM_USERNAME, username);
+        claims.put(CLAIM_NAME, name);
         claims.put(CLAIM_ROLE, role == null ? "user" : role);
         claims.put(CLAIM_TYPE, type);
 
