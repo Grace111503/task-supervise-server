@@ -20,6 +20,24 @@
   const stats = ref({ total: 0, pendingReceive: 0, inProgress: 0, pendingFeedback: 0, pendingAccept: 0, completed: 0, overdue: 0 })
   const unreadCount = ref(0)
 
+  /** 拼接完整的头像访问URL（附带token参数用于鉴权） */
+  function getFullAvatarUrl(path: string): string {
+    if (!path) return ''
+    if (path.startsWith('http://') || path.startsWith('https://')) return path
+    const baseUrl = 'http://localhost:8082'
+    let accessToken = ''
+    try {
+      const raw = uni.getStorageSync('authorized-token')
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        accessToken = parsed.accessToken || ''
+      }
+    } catch {}
+    const tokenParam = accessToken ? `?token=Bearer%20${accessToken}` : ''
+    const apiPath = path.replace('avatars/', 'user/avatar/')
+    return `${baseUrl}/api/v1/${apiPath}${tokenParam}`
+  }
+
   // 批量操作相关
   const isMultiSelect = ref(false)
   const selectedTasks = ref<number[]>([])
@@ -397,7 +415,15 @@
     <!-- 顶部用户角色横幅 -->
     <view class="role-banner" v-if="userStore.isLogin">
       <view class="role-banner-left">
-        <view class="role-avatar">{{ userStore.userInfo.name?.charAt(0) || 'U' }}</view>
+        <view class="role-avatar">
+          <image
+            v-if="userStore.userInfo.avatar"
+            :src="getFullAvatarUrl(userStore.userInfo.avatar)"
+            mode="aspectFill"
+            class="role-avatar-img"
+          />
+          <text v-else>{{ userStore.userInfo.name?.charAt(0) || 'U' }}</text>
+        </view>
         <view class="role-info">
           <text class="role-name">{{ userStore.userInfo.name }}</text>
           <view class="role-tags">
@@ -613,6 +639,12 @@
     font-size: 36rpx;
     font-weight: 600;
     color: #ffffff;
+    overflow: hidden;
+  }
+
+  .role-avatar-img {
+    width: 100%;
+    height: 100%;
   }
 
   .role-info {

@@ -58,6 +58,9 @@ export function setToken(data: DataInfo<number>, roleName?: string) {
       })
     : Cookies.set(TokenKey, cookieString)
 
+  // 同步写入 uni 本地存储，供 uploadAvatar 等不走 http 拦截器的场景读取
+  uni.setStorageSync(TokenKey, cookieString)
+
   function setUserKey(username: string, roles: Array<string>) {
     storageSession().setItem(userKey, {
       accessToken,
@@ -81,6 +84,7 @@ export function setToken(data: DataInfo<number>, roleName?: string) {
 export function removeToken(roleName?: string) {
   const TokenKey = roleName ? `${roleName}-${TokenKeyBase}` : TokenKeyBase
   Cookies.remove(TokenKey)
+  uni.removeStorageSync(TokenKey)
   storageSession().clear()
 }
 

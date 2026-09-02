@@ -45,9 +45,8 @@
 
       uni.showToast({ icon: 'success', title: '登录成功' })
 
-      // 显示tabBar并跳转首页
+      // 跳转首页（登录页非 tabBar 页，无需调 showTabBar）
       setTimeout(() => {
-        uni.showTabBar()
         uni.switchTab({ url: '/pages/home/index' })
       }, 800)
     } catch (error: any) {

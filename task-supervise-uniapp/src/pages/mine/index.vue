@@ -11,6 +11,26 @@
   const userStore = useUserStore()
   const { userInfo, isLogin } = storeToRefs(userStore)
 
+  /** 拼接完整的头像访问URL（附带token参数用于鉴权） */
+  function getFullAvatarUrl(path: string): string {
+    if (!path) return ''
+    if (path.startsWith('http://') || path.startsWith('https://')) return path
+    const baseUrl = 'http://localhost:8082'
+    let accessToken = ''
+    try {
+      const raw = uni.getStorageSync('authorized-token')
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        accessToken = parsed.accessToken || ''
+      }
+    } catch {}
+    const tokenParam = accessToken ? `?token=Bearer%20${accessToken}` : ''
+    // 数据库存的是 "avatars/yyyy/MM/dd/uuid.jpg"
+    // 后端 GET 接口是 /api/v1/user/avatar/{year}/{month}/{day}/{filename}
+    const apiPath = path.replace('avatars/', 'user/avatar/')
+    return `${baseUrl}/api/v1/${apiPath}${tokenParam}`
+  }
+
   /** 检查登录状态 */
   function checkAuth() {
     if (!isLogin.value) {
@@ -91,7 +111,8 @@
         <image
           class="avatar-img"
           v-if="userInfo?.avatar"
-          :src="userInfo.avatar"
+          :src="getFullAvatarUrl(userInfo.avatar)"
+          mode="aspectFill"
         />
         <view class="avatar-placeholder" v-else>
           {{ userInfo?.name?.charAt(0) || '?' }}

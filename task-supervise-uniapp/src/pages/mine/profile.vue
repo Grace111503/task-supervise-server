@@ -13,25 +13,76 @@
   const { userInfo } = storeToRefs(userStore)
 
   const form = reactive({
+    avatar: '',
     email: '',
     name: '',
     phone: '',
   })
 
   const loading = ref(false)
+  const avatarUploading = ref(false)
+
+  /** 拼接完整的头像访问URL（附带token参数用于鉴权） */
+  function getFullAvatarUrl(path: string): string {
+    if (!path) return ''
+    if (path.startsWith('http://') || path.startsWith('https://')) return path
+    const baseUrl = 'http://localhost:8082'
+    let accessToken = ''
+    try {
+      const raw = uni.getStorageSync('authorized-token')
+      if (raw) {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+        accessToken = parsed.accessToken || ''
+      }
+    } catch {}
+    const tokenParam = accessToken ? `?token=Bearer%20${accessToken}` : ''
+    // 数据库存的是 "avatars/yyyy/MM/dd/uuid.jpg"
+    // 后端 GET 接口是 /api/v1/user/avatar/{year}/{month}/{day}/{filename}
+    const apiPath = path.replace('avatars/', 'user/avatar/')
+    return `${baseUrl}/api/v1/${apiPath}${tokenParam}`
+  }
 
   async function loadUserInfo() {
     loading.value = true
     try {
-      const info = await authApi.getUserInfo()
+      const res: any = await authApi.getUserInfo()
+      // 后端返回 Result<UserInfoVO>，需取 .data 拿到真正的 UserInfoVO
+      const info = res?.data ?? res
       form.name = info.name || ''
       form.phone = info.phone || ''
       form.email = info.email || ''
+      form.avatar = info.avatar || ''
     } catch (error) {
       console.error('获取用户信息失败:', error)
     } finally {
       loading.value = false
     }
+  }
+
+  /** 选择并上传头像 */
+  function handleAvatarClick() {
+    uni.chooseImage({
+      count: 1,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: async (res) => {
+        const tempFilePath = res.tempFilePaths[0]
+        if (!tempFilePath) return
+
+        avatarUploading.value = true
+        try {
+          const avatarPath = await authApi.uploadAvatar(tempFilePath)
+          form.avatar = avatarPath
+          // 同步更新 store 中的头像
+          userStore.setUserInfo({ ...userInfo.value, avatar: avatarPath })
+          uni.showToast({ icon: 'success', title: '头像上传成功' })
+        } catch (error) {
+          console.error('头像上传失败:', error)
+        } finally {
+          avatarUploading.value = false
+        }
+      },
+    })
   }
 
   async function handleSubmit() {
@@ -42,7 +93,9 @@
 
     loading.value = true
     try {
-      const updated = await authApi.updateUserInfo(form)
+      const res: any = await authApi.updateUserInfo(form)
+      // 后端返回 Result<UserInfoVO>，需取 .data 拿到真正的 UserInfoVO
+      const updated = res?.data ?? res
       userStore.setUserInfo({ ...userInfo.value, ...updated })
       uni.showToast({ icon: 'success', title: '修改成功' })
     } catch (error) {
@@ -63,15 +116,19 @@
 
     <view class="profile-form">
       <!-- 头像 -->
-      <view class="avatar-section">
+      <view class="avatar-section" @click="handleAvatarClick">
         <view class="avatar-wrapper">
           <image
             class="avatar-img"
-            v-if="userInfo?.avatar"
-            :src="userInfo.avatar"
+            v-if="form.avatar"
+            :src="getFullAvatarUrl(form.avatar)"
+            mode="aspectFill"
           />
           <view class="avatar-placeholder" v-else>
             {{ userInfo?.name?.charAt(0) || '?' }}
+          </view>
+          <view class="avatar-loading" v-if="avatarUploading">
+            <wd-loading />
           </view>
         </view>
         <view class="avatar-hint">点击更换头像</view>
@@ -143,6 +200,20 @@
     border-radius: 50%;
     overflow: hidden;
     margin-bottom: 16rpx;
+    position: relative;
+  }
+
+  .avatar-loading {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 50%;
   }
 
   .avatar-img {
