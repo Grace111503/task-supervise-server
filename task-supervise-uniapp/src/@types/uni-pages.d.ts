@@ -9,6 +9,7 @@ type _LocationUrl =
   "/pages/feedback/submit" |
   "/pages/home/detail" |
   "/pages/home/edit" |
+  "/pages/home/overdue-detail" |
   "/pages/home/overdue" |
   "/pages/login/index" |
   "/pages/login/register" |

@@ -19,7 +19,7 @@
   const selectAll = computed({
     get: () => selectedTasks.value.length === overdueTasks.value.length && overdueTasks.value.length > 0,
     set: (val: boolean) => {
-      selectedTasks.value = val ? overdueTasks.value.map(t => t.taskId) : []
+      selectedTasks.value = val ? overdueTasks.value.map(t => String(t.id)) : []
     }
   })
 
@@ -107,7 +107,7 @@
   }
 
   function goToDetail(taskId: string) {
-    uni.navigateTo({ url: `/pages/home/detail?id=${taskId}` })
+    uni.navigateTo({ url: `/pages/home/overdue-detail?taskId=${taskId}` })
   }
 
   onShow(() => { page.value = 1; loadOverdueTasks() })
@@ -151,13 +151,13 @@
       <view
         class="task-card overdue-card"
         v-for="task in overdueTasks"
-        :key="task.taskId"
-        @click="isMultiSelect ? toggleTask(task.taskId) : goToDetail(task.taskId)"
+        :key="task.id"
+        @click="isMultiSelect ? toggleTask(String(task.id)) : goToDetail(String(task.id))"
       >
         <view class="card-top">
-          <view class="select-box" v-if="isMultiSelect" @click.stop="toggleTask(task.taskId)">
-            <view class="checkbox" :class="{ checked: selectedTasks.includes(task.taskId) }">
-              <text v-if="selectedTasks.includes(task.taskId)" class="check-mark">✓</text>
+          <view class="select-box" v-if="isMultiSelect" @click.stop="toggleTask(String(task.id))">
+            <view class="checkbox" :class="{ checked: selectedTasks.includes(String(task.id)) }">
+              <text v-if="selectedTasks.includes(String(task.id))" class="check-mark">✓</text>
             </view>
           </view>
           <view class="overdue-badge">
@@ -166,7 +166,7 @@
         </view>
 
         <view class="task-header">
-          <view class="task-name">{{ task.taskName }}</view>
+          <view class="task-name">{{ task.title }}</view>
         </view>
 
         <view class="task-info">

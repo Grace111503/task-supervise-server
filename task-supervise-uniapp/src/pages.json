@@ -57,6 +57,13 @@
       }
     },
     {
+      "path": "pages/home/overdue-detail",
+      "layout": "default",
+      "style": {
+        "navigationBarTitleText": "逾期处置"
+      }
+    },
+    {
       "path": "pages/home/overdue",
       "layout": "default",
       "style": {

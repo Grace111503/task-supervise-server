@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.enterprise.tasksuperviseserver.common.constant.TaskConstant.*;
+
 /**
  * 状态跟踪看板 Service 实现
  *
@@ -28,18 +30,14 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final TaskMapper taskMapper;
 
-    /** 六大状态定义：status → label */
-    private static final int[][] STATUS_CARDS = {
-            {TaskConstant.STATUS_PENDING_RECEIVE, 1},
-            {TaskConstant.STATUS_IN_PROGRESS, 2},
-            {TaskConstant.STATUS_PENDING_FEEDBACK, 3},
-            {TaskConstant.STATUS_PENDING_ACCEPT, 4},
-            {TaskConstant.STATUS_COMPLETED, 5},
-            {TaskConstant.STATUS_OVERDUE, 6}
-    };
-
-    private static final String[] STATUS_LABELS = {
-            "", "待接收", "进行中", "待反馈", "待验收", "已完成", "已逾期"
+    /** 六大状态定义：状态码 → 数据库字符串 → 中文标签 */
+    private static final String[][] STATUS_CARDS = {
+            {STATUS_STR_PENDING, "待接收"},
+            {STATUS_STR_IN_PROGRESS, "进行中"},
+            {STATUS_STR_PENDING_FEEDBACK, "待反馈"},
+            {STATUS_STR_PENDING_ACCEPT, "待验收"},
+            {STATUS_STR_COMPLETED, "已完成"},
+            {STATUS_STR_OVERDUE, "已逾期"}
     };
 
     @Override
@@ -47,14 +45,15 @@ public class DashboardServiceImpl implements DashboardService {
         Long userId = UserContext.getUserId();
         List<Map<String, Object>> result = new ArrayList<>();
 
-        for (int[] card : STATUS_CARDS) {
-            int statusVal = card[0];
+        for (int i = 0; i < STATUS_CARDS.length; i++) {
+            String statusStr = STATUS_CARDS[i][0];
+            String label = STATUS_CARDS[i][1];
             long count = taskMapper.selectCount(buildMyTaskWrapper(userId)
-                    .eq(Task::getStatus, statusVal));
+                    .eq(Task::getStatus, statusStr));
 
             Map<String, Object> map = new HashMap<>();
-            map.put("status", statusVal);
-            map.put("label", STATUS_LABELS[statusVal]);
+            map.put("status", i + 1);
+            map.put("label", label);
             map.put("count", count);
             result.add(map);
         }
@@ -65,8 +64,8 @@ public class DashboardServiceImpl implements DashboardService {
     public Map<String, Object> taskByStatus(Integer status, long page, long pageSize) {
         Long userId = UserContext.getUserId();
         LambdaQueryWrapper<Task> wrapper = buildMyTaskWrapper(userId);
-        if (status != null) {
-            wrapper.eq(Task::getStatus, status.toString());
+        if (status != null && status >= 1 && status <= STATUS_CARDS.length) {
+            wrapper.eq(Task::getStatus, STATUS_CARDS[status - 1][0]);
         }
         wrapper.orderByDesc(Task::getCreatedAt);
 

@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 @TableName("overdue_accountability")
 public class OverdueAccountability {
 
-    @TableId(value = "accountability_id", type = IdType.AUTO)
+    @TableId(value = "overdue_id", type = IdType.AUTO)
     private Long accountabilityId;
 
     private Long taskId;

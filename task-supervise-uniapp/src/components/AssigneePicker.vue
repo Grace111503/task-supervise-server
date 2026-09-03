@@ -171,7 +171,7 @@
 
   .picker-popup {
     width: 100%;
-    max-height: 80vh;
+    height: 80vh;
     background-color: #ffffff;
     border-radius: 24rpx 24rpx 0 0;
     display: flex;
@@ -271,7 +271,7 @@
 
   .user-list {
     flex: 1;
-    max-height: 50vh;
+    min-height: 0;
     padding: 0 30rpx;
   }
 
@@ -349,6 +349,7 @@
     gap: 20rpx;
     border-top: 1rpx solid #e5e6eb;
     padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+    flex-shrink: 0;
   }
 
   .footer-btn {

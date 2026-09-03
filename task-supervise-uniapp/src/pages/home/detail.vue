@@ -3,6 +3,8 @@
   import { taskApi } from '~/api/task'
   import { feedbackApi } from '~/api/feedback'
   import type { ProgressFeedback, AssigneeProgress } from '~/api/feedback'
+  import { accountabilityApi } from '~/api/accountability'
+  import type { OverdueAccountability } from '~/api/accountability'
   import { useUserStore } from '@/store/user'
 
   definePage(() => ({
@@ -23,6 +25,7 @@
   const loadingTimeline = ref(false)
   const assigneeProgressList = ref<AssigneeProgress[]>([])
   const loadingAssigneeProgress = ref(false)
+  const accountabilityRecord = ref<OverdueAccountability | null>(null)
 
   /** 是否为多人协办模式 */
   const isMultiMode = computed(() => {
@@ -135,6 +138,18 @@
     }
   }
 
+  async function loadAccountability() {
+    if (!taskId.value) return
+    try {
+      const res = await accountabilityApi.listByTaskId(taskId.value)
+      const data = res?.data || res || []
+      const records = Array.isArray(data) ? data : []
+      accountabilityRecord.value = records.length > 0 ? records[0] : null
+    } catch (error) {
+      console.error('加载逾期处置记录失败:', error)
+    }
+  }
+
   /** 验收任务 */
   function handleAccept() {
     uni.showActionSheet({
@@ -191,6 +206,10 @@
 
   function goFeedbackList() {
     uni.navigateTo({ url: `/pages/feedback/list?taskId=${taskId.value}` })
+  }
+
+  function goOverdueDetail() {
+    uni.navigateTo({ url: `/pages/home/overdue-detail?taskId=${taskId.value}` })
   }
 
   /** 驳回任务（管理员/主管） */
@@ -266,6 +285,7 @@
     loadFeedbackList()
     loadTimeline()
     loadAssigneeProgress()
+    loadAccountability()
   })
 </script>
 
@@ -331,6 +351,28 @@
         <view class="section-title">{{ task.acceptResult === 1 ? '✅ 验收通过' : '❌ 验收驳回' }}</view>
         <view class="section-desc" v-if="task.acceptRemark">{{ task.acceptRemark }}</view>
         <view class="reject-time" v-if="task.acceptedAt">验收时间：{{ formatDate(task.acceptedAt) }}</view>
+      </view>
+
+      <!-- 逾期处置信息 -->
+      <view class="detail-section overdue-section" v-if="task.status === 'overdue' && accountabilityRecord">
+        <view class="section-title">📋 逾期处置记录</view>
+        <view class="overdue-info-row" v-if="accountabilityRecord.overdueDays">
+          <text class="overdue-label">逾期天数：</text>
+          <text class="overdue-value">{{ accountabilityRecord.overdueDays }} 天</text>
+        </view>
+        <view class="overdue-info-row" v-if="accountabilityRecord.reason">
+          <text class="overdue-label">客观原因：</text>
+          <text class="overdue-value">{{ accountabilityRecord.reason }}</text>
+        </view>
+        <view class="overdue-info-row" v-if="accountabilityRecord.disposition">
+          <text class="overdue-label">处置措施：</text>
+          <text class="overdue-value">{{ accountabilityRecord.disposition }}</text>
+        </view>
+        <view class="overdue-info-row" v-if="accountabilityRecord.archiveTime">
+          <text class="overdue-label">归档时间：</text>
+          <text class="overdue-value">{{ formatDate(accountabilityRecord.archiveTime) }}</text>
+        </view>
+        <view class="overdue-hint">此记录永久留存，作为人员绩效考核依据</view>
       </view>
 
       <!-- 任务描述 -->
@@ -460,6 +502,13 @@
           @click="handleReject"
         >
           驳回
+        </view>
+        <view
+          class="action-btn overdue"
+          v-if="task.status === 'overdue' && userStore.hasManagePermission"
+          @click="goOverdueDetail"
+        >
+          逾期处置
         </view>
         <view class="action-btn warning" v-if="canEdit" @click="goEdit">编辑</view>
         <view class="action-btn danger" v-if="canDelete" @click="handleDelete">删除</view>
@@ -595,6 +644,10 @@
     &.accept {
       background-color: #722ed1;
     }
+
+    &.overdue {
+      background-color: #f5222d;
+    }
   }
 
   /* 驳回标记样式 */
@@ -611,6 +664,38 @@
     font-size: 22rpx;
     color: var(--wot-text-auxiliary, #869a9c);
     margin-top: 8rpx;
+  }
+
+  /* 逾期处置样式 */
+  .overdue-section {
+    background-color: #fff2f0;
+    border-left: 6rpx solid #f5222d;
+  }
+
+  .overdue-info-row {
+    display: flex;
+    margin-bottom: 12rpx;
+    font-size: 28rpx;
+    line-height: 1.6;
+  }
+
+  .overdue-label {
+    color: var(--wot-text-auxiliary, #869a9c);
+    flex-shrink: 0;
+    width: 160rpx;
+  }
+
+  .overdue-value {
+    color: var(--wot-text-main, #1d2129);
+    flex: 1;
+  }
+
+  .overdue-hint {
+    font-size: 22rpx;
+    color: #fa8c16;
+    margin-top: 12rpx;
+    padding-top: 12rpx;
+    border-top: 1rpx solid #ffccc7;
   }
 
   /* 反馈部分样式 */

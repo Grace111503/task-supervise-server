@@ -38,11 +38,12 @@ CREATE TABLE IF NOT EXISTS sys_dept (
 -- ========== 3. 角色表 ==========
 CREATE TABLE IF NOT EXISTS sys_role (
     role_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '角色ID',
-    role_name VARCHAR(50) NOT NULL COMMENT '角色名称',
     role_code VARCHAR(50) NOT NULL UNIQUE COMMENT '角色编码',
-    description VARCHAR(200) COMMENT '描述',
-    status TINYINT DEFAULT 1 COMMENT '状态',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    role_name VARCHAR(50) NOT NULL COMMENT '角色名称',
+    data_scope INT DEFAULT 1 COMMENT '数据范围: 1-全部 2-本部门 3-仅本人',
+    sort INT DEFAULT 0 COMMENT '排序',
+    status TINYINT DEFAULT 1 COMMENT '状态 1-正常 0-停用',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
 
@@ -58,9 +59,11 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
 CREATE TABLE IF NOT EXISTS task_group (
     group_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     group_name VARCHAR(100) NOT NULL,
-    description VARCHAR(500),
-    creator_id BIGINT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dept_id BIGINT COMMENT '所属部门ID',
+    group_type INT DEFAULT 1 COMMENT '组类型: 1-普通 2-专项',
+    sort INT DEFAULT 0 COMMENT '排序',
+    status TINYINT DEFAULT 1 COMMENT '状态 1-启用 0-停用',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务组';
 
 -- ========== 6. 任务表 ==========
@@ -104,10 +107,12 @@ CREATE TABLE IF NOT EXISTS task (
 CREATE TABLE IF NOT EXISTS warn_rule (
     rule_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     rule_name VARCHAR(100) NOT NULL,
-    condition_expr VARCHAR(500) COMMENT '触发条件表达式',
     level INT DEFAULT 1 COMMENT '预警级别 1-普通 2-重要 3-紧急',
-    enabled TINYINT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    before_days INT COMMENT '提前提醒天数',
+    push_frequency VARCHAR(20) COMMENT '推送频率: once-一次 daily-每天',
+    target_roles VARCHAR(200) COMMENT '目标角色(逗号分隔)',
+    enabled TINYINT DEFAULT 1 COMMENT '是否启用',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预警规则';
 
@@ -176,13 +181,14 @@ CREATE TABLE IF NOT EXISTS task_file (
 CREATE TABLE IF NOT EXISTS acceptance (
     accept_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
-    applicant_id BIGINT,
-    apply_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    result VARCHAR(20) DEFAULT 'pending' COMMENT 'pending/approved/rejected',
-    opinion VARCHAR(1000),
-    approver_id BIGINT,
-    approve_time TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    applicant_id BIGINT COMMENT '申请人ID',
+    applicant_name VARCHAR(50) COMMENT '申请人姓名',
+    acceptor_id BIGINT COMMENT '验收人ID',
+    acceptor_name VARCHAR(50) COMMENT '验收人姓名',
+    result INT DEFAULT 0 COMMENT '验收结果: 0-待验收 1-通过 2-退回',
+    opinion VARCHAR(1000) COMMENT '验收意见',
+    apply_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+    accept_time TIMESTAMP NULL COMMENT '验收时间',
     INDEX idx_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='验收表';
 
@@ -190,60 +196,67 @@ CREATE TABLE IF NOT EXISTS acceptance (
 CREATE TABLE IF NOT EXISTS flow_config (
     flow_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     flow_name VARCHAR(100) NOT NULL,
-    dept_id BIGINT,
-    config_json TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    dept_id BIGINT COMMENT '所属部门ID',
+    node_config TEXT COMMENT '节点配置(JSON)',
+    status TINYINT DEFAULT 1 COMMENT '状态 1-启用 0-停用',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程配置';
 
--- ========== 14. 逾期追责表 ==========
+-- ========== 14. 逾期问责表 ==========
 CREATE TABLE IF NOT EXISTS overdue_accountability (
     overdue_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
-    reason VARCHAR(1000),
-    disposition VARCHAR(500),
-    overdue_days INT,
-    archive_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reason VARCHAR(1000) COMMENT '逾期原因',
+    disposition VARCHAR(500) COMMENT '处置措施',
+    overdue_days INT COMMENT '逾期天数',
+    archive_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '归档时间',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_task (task_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='逾期追责';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='逾期问责';
 
 -- ========== 15. 整改任务表 ==========
 CREATE TABLE IF NOT EXISTS rectify_task (
     rectify_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
-    rectify_content VARCHAR(2000),
-    deadline TIMESTAMP NULL,
-    status VARCHAR(20) DEFAULT 'pending' COMMENT 'pending/completed',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    accept_id BIGINT COMMENT '关联验收ID',
+    rectify_reason VARCHAR(1000) COMMENT '整改原因',
+    rectify_opinion VARCHAR(1000) COMMENT '整改意见',
+    status INT DEFAULT 0 COMMENT '状态: 0-待整改 1-处理中 2-已重新提交',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    complete_time TIMESTAMP NULL COMMENT '完成时间',
+    INDEX idx_task (task_id),
+    INDEX idx_accept (accept_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='整改任务';
 
 -- ========== 16. 操作日志表 ==========
 CREATE TABLE IF NOT EXISTS operation_log (
     log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    module VARCHAR(50),
-    action VARCHAR(50),
-    task_id BIGINT,
-    operator_id BIGINT,
-    operator_name VARCHAR(50),
-    detail TEXT,
+    module VARCHAR(50) COMMENT '模块: task/feedback/acceptance/warn/file',
+    action VARCHAR(50) COMMENT '操作类型: CREATE/UPDATE/DELETE/VERIFY/UPLOAD/REJECT',
+    task_id BIGINT COMMENT '关联任务ID',
+    operator_id BIGINT COMMENT '操作人ID',
+    operator_name VARCHAR(50) COMMENT '操作人姓名',
+    dept_id BIGINT COMMENT '操作人部门ID',
+    detail TEXT COMMENT '操作详情',
+    encrypted_content VARCHAR(64) COMMENT 'SHA-256哈希值(防篡改)',
+    ip VARCHAR(50) COMMENT '操作人IP',
     operate_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_module_time (module, operate_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志';
 
--- ========== 17. 统计表 ==========
+-- ========== 17. 统计报表表 ==========
 CREATE TABLE IF NOT EXISTS statistics_report (
     report_id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    period VARCHAR(20) COMMENT 'day/week/month/quarter/year',
-    period_value VARCHAR(20),
-    dept_id BIGINT,
-    user_id BIGINT,
-    total_tasks INT DEFAULT 0,
-    completed_tasks INT DEFAULT 0,
-    overdue_tasks INT DEFAULT 0,
-    report_json TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    period VARCHAR(20) COMMENT '统计周期: day/week/month/quarter/year',
+    period_value VARCHAR(20) COMMENT '周期值(如 2026-09)',
+    dept_id BIGINT COMMENT '部门ID',
+    user_id BIGINT COMMENT '用户ID',
+    total_dispatch INT DEFAULT 0 COMMENT '总派发数',
+    on_time_rate DECIMAL(5,2) DEFAULT 0 COMMENT '按时完成率(%)',
+    overdue_count INT DEFAULT 0 COMMENT '逾期数',
+    avg_complete_days DECIMAL(10,2) DEFAULT 0 COMMENT '平均完成天数',
+    generate_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '生成时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='统计报表';
 
 -- ========== 18. 任务指派表 ==========
@@ -295,12 +308,9 @@ CREATE TABLE IF NOT EXISTS task_template_field (
 CREATE TABLE IF NOT EXISTS task_progress_node (
     node_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     task_id BIGINT NOT NULL,
-    node_name VARCHAR(100),
-    sequence INT DEFAULT 0,
-    status VARCHAR(20) DEFAULT 'pending',
-    operator_id BIGINT,
-    operator_name VARCHAR(50),
-    operate_time TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    node_name VARCHAR(100) COMMENT '节点名称',
+    stage INT DEFAULT 1 COMMENT '阶段序号',
+    plan_date DATE COMMENT '计划日期',
+    status INT DEFAULT 0 COMMENT '状态: 0-未开始 1-进行中 2-已完成',
     INDEX idx_task (task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务进度节点';
